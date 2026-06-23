@@ -229,7 +229,7 @@ Installed automatically with most mod managers:
 - **One Cull portal** can serve your entire world — boars, wolves, lox, etc.
 - **One Maturing portal = one species rule** — for mixed keep/cull setups, add a Maturing portal per species (they can share one pen)
 - Maturing pens too close to a breeder trigger a **cap radius warning** — keep grow-up pens outside the vanilla breeding cap range when possible
-- **Players** cannot travel through offspring portals — juveniles only
+- **Players cannot travel through offspring portals** — juveniles only. Offspring portals are excluded from XPortal's travel list when XPortal is installed.
 
 ---
 

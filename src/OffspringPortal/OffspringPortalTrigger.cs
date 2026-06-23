@@ -27,7 +27,7 @@ public class OffspringPortalTrigger : MonoBehaviour
             {
                 player.Message(
                     MessageHud.MessageType.Center,
-                    "Offspring portals route juveniles only. Use a standard portal to travel.");
+                    PortalTravelGuard.PlayerTravelBlockedMessage);
             }
 
             return;

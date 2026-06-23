@@ -1,6 +1,6 @@
 {
   "name": "Offspring_Portal",
-  "version_number": "0.2.8",
+  "version_number": "0.2.9",
   "website_url": "",
   "description": "Teleports tamed juveniles from breeder portals to maturing pens. Optional adult routing to farm or cull. Press E on juveniles to toggle follow/stay.",
   "dependencies": [

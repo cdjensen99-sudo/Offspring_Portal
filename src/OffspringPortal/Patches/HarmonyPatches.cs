@@ -112,6 +112,7 @@ public static class GameStartPatch
     {
         PortalRpc.Register();
         PortalHelper.RebuildRegistryFromWorld();
+        PortalTravelGuard.ClearAllOffspringTravelBindings();
         OffspringPortalRuntime.Instance.StartCoroutine(DelayedRegistryRebuild());
     }
 
@@ -249,7 +250,56 @@ public static class WearNTearOnPlacedPatch
             OffspringPortalPrefabs.EnsureIdentity(portal);
             portal.m_exitDistance = PortalPlacement.ScaledExitDistance;
             OffspringPortalPrefabs.EnsureRuntimeTriggers(portal);
+            PortalTravelGuard.ClearTravelBindings(portal);
             PortalHelper.SyncRegistryFromPortal(portal);
+        }
+    }
+}
+
+[HarmonyPatch(typeof(TeleportWorld), "Teleport")]
+public static class TeleportWorldPlayerTravelPatch
+{
+    private static bool Prefix(TeleportWorld __instance, Player player)
+    {
+        if (!PortalTravelGuard.BlocksPlayerTravel(__instance, player, out string message))
+        {
+            return true;
+        }
+
+        if (player == Player.m_localPlayer)
+        {
+            player.Message(MessageHud.MessageType.Center, message);
+        }
+
+        return false;
+    }
+}
+
+[HarmonyPatch(typeof(TeleportWorld), "RPC_SetConnected")]
+public static class TeleportWorldSetConnectedPatch
+{
+    private static bool Prefix(TeleportWorld __instance)
+    {
+        return !OffspringPortalPrefabs.IsOffspringPortal(__instance);
+    }
+}
+
+[HarmonyPatch(typeof(ZDOMan), "GetPortals")]
+public static class ZdomanGetPortalsPatch
+{
+    private static void Postfix(ref System.Collections.Generic.List<ZDO> __result)
+    {
+        if (__result == null || __result.Count == 0)
+        {
+            return;
+        }
+
+        for (int i = __result.Count - 1; i >= 0; i--)
+        {
+            if (PortalTravelGuard.IsOffspringPortalZdo(__result[i]))
+            {
+                __result.RemoveAt(i);
+            }
         }
     }
 }

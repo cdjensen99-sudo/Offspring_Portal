@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.9
+- Block player travel to and from offspring portals (fixes XPortal bounce-back)
+- Exclude offspring portals from XPortal's portal list when XPortal is installed
+
 ## 0.2.8
 - Fixed follow on wolf cubs and other AnimalAI juveniles (no Tameable/MonsterAI — uses custom follow path)
 - Juvenile crosshair detection no longer requires Tameable component

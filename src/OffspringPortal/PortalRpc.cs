@@ -87,6 +87,7 @@ public static class PortalRpc
         zdo.Set(ZdoFields.PortalName, name);
         zdo.Set(ZdoFields.AdultDestination, PortalRoleCatalog.ToStorageValue(resolvedDestination));
         zdo.Set(ZdoFields.ForwardAdults, resolvedDestination == AdultDestination.Cull);
+        PortalTravelGuard.ClearTravelBindings(zdo);
         DestinationRegistry.RegisterOrUpdate(portalId, zdo.GetPosition(), role, resolvedSpecies, resolvedDestination);
         DestinationRegistry.RefreshCapWarnings();
 

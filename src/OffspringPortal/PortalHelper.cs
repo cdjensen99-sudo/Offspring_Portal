@@ -39,6 +39,7 @@ public static class PortalHelper
         }
 
         SyncRegistryFromZdo(zdo);
+        PortalTravelGuard.ClearTravelBindings(zdo);
         DestinationRegistry.RefreshCapWarnings();
     }
 
