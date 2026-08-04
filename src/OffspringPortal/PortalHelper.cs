@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -5,11 +6,13 @@ namespace OffspringPortal;
 
 public static class PortalHelper
 {
-    public static bool TryGetPortal(TeleportWorld portal, out ZDOID id, out Vector3 position, out SpeciesType species)
+    private static readonly HashSet<int> PendingInitialization = new HashSet<int>();
+
+    public static bool TryGetPortal(TeleportWorld portal, out ZDOID id, out Vector3 position, out string speciesKey)
     {
         id = ZDOID.None;
         position = Vector3.zero;
-        species = SpeciesType.None;
+        speciesKey = string.Empty;
 
         if (portal == null || !OffspringPortalPrefabs.IsOffspringPortal(portal))
         {
@@ -25,8 +28,79 @@ public static class PortalHelper
 
         id = zdo.m_uid;
         position = zdo.GetPosition();
-        species = SpeciesCatalog.FromStorageValue(zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty));
+        speciesKey = zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty);
         return true;
+    }
+
+    public static void EnsurePortalInitialized(TeleportWorld portal)
+    {
+        if (portal == null || !OffspringPortalPrefabs.IsOffspringPortal(portal))
+        {
+            return;
+        }
+
+        ZNetView nview = portal.GetComponent<ZNetView>();
+        ZDO zdo = nview?.GetZDO();
+        if (zdo == null)
+        {
+            OffspringPortalRuntime.Instance.StartCoroutine(DeferredEnsurePortalInitialized(portal));
+            return;
+        }
+
+        ApplyPortalInitialization(portal, nview);
+    }
+
+    private static IEnumerator DeferredEnsurePortalInitialized(TeleportWorld portal)
+    {
+        int instanceId = portal.GetInstanceID();
+        if (!PendingInitialization.Add(instanceId))
+        {
+            yield break;
+        }
+
+        ZNetView nview = portal.GetComponent<ZNetView>();
+        for (int i = 0; i < 60; i++)
+        {
+            if (portal == null)
+            {
+                PendingInitialization.Remove(instanceId);
+                yield break;
+            }
+
+            if (nview?.GetZDO() != null)
+            {
+                break;
+            }
+
+            yield return null;
+        }
+
+        PendingInitialization.Remove(instanceId);
+        if (portal != null && nview?.GetZDO() != null)
+        {
+            ApplyPortalInitialization(portal, nview);
+        }
+    }
+
+    private static void ApplyPortalInitialization(TeleportWorld portal, ZNetView nview)
+    {
+        OffspringPortalPrefabs.EnsureIdentity(portal);
+        portal.transform.localScale = Vector3.one * PortalPlacement.PortalScale;
+        portal.m_exitDistance = PortalPlacement.ScaledExitDistance;
+
+        if (!portal.enabled)
+        {
+            OffspringPortalInitializer.CompleteTeleportWorldAwake(portal, nview);
+        }
+
+        OffspringPortalPrefabs.EnsureRuntimeTriggers(portal);
+        ZDO zdo = nview.GetZDO();
+        if (zdo != null && ZNet.instance.IsServer())
+        {
+            PortalTravelGuard.ClearTravelBindings(zdo);
+        }
+
+        SyncRegistryFromPortal(portal);
     }
 
     public static void SyncRegistryFromPortal(TeleportWorld portal)
@@ -51,9 +125,9 @@ public static class PortalHelper
         }
 
         PortalRole role = PortalRoleCatalog.FromZdo(zdo);
-        SpeciesType species = SpeciesCatalog.FromStorageValue(zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty));
+        string speciesKey = zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty);
         AdultDestination adultDestination = PortalRoleCatalog.GetAdultDestination(zdo);
-        DestinationRegistry.RegisterOrUpdate(zdo.m_uid, zdo.GetPosition(), role, species, adultDestination);
+        DestinationRegistry.RegisterOrUpdate(zdo.m_uid, zdo.GetPosition(), role, speciesKey, adultDestination);
     }
 
     public static void RebuildRegistryFromWorld()
@@ -61,6 +135,7 @@ public static class PortalHelper
         DestinationRegistry.Clear();
         RebuildRegistryFromLoadedPortals();
         RebuildRegistryFromAllPortalZdos();
+        BreedableSpeciesRegistry.RefreshFromAllBreeders();
         DestinationRegistry.RefreshCapWarnings();
         LogRegistryState("rebuilt");
     }
@@ -71,6 +146,7 @@ public static class PortalHelper
         int maturing = 0;
         int farm = 0;
         int cull = 0;
+        int eggCollectors = 0;
         foreach (PortalRecord record in DestinationRegistry.GetAll())
         {
             switch (record.Role)
@@ -84,6 +160,9 @@ public static class PortalHelper
                 case PortalRole.Cull:
                     cull++;
                     break;
+                case PortalRole.EggCollector:
+                    eggCollectors++;
+                    break;
                 default:
                     breeders++;
                     break;
@@ -91,7 +170,7 @@ public static class PortalHelper
         }
 
         OffspringPortalPlugin.Log.LogInfo(
-            $"Portal registry {reason}: {breeders} breeder(s), {maturing} maturing, {farm} farm, {cull} cull.");
+            $"Portal registry {reason}: {breeders} breeder(s), {maturing} maturing, {farm} farm, {cull} cull, {eggCollectors} egg collector(s).");
     }
 
     private static void RebuildRegistryFromLoadedPortals()

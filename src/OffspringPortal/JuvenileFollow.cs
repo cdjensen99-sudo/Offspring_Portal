@@ -22,38 +22,40 @@ public static class JuvenileFollow
             return false;
         }
 
-        MonsterAI monsterAi = character.GetComponent<MonsterAI>();
-        Tameable tameable = character.GetComponent<Tameable>();
-        if (tameable != null && monsterAi != null)
+        JuvenileGroundSnapper.EnsureAttached(character);
+        JuvenileFollowController.EnsureAttached(character);
+
+        if (ZNet.instance.IsServer())
         {
-            tameable.m_commandable = true;
-
-            if (ZNet.instance.IsServer())
-            {
-                ApplyMonsterFollowToggle(tameable, monsterAi, player, showMessage);
-                return true;
-            }
-
-            tameable.Command(player, showMessage);
-            return true;
+            return ApplyFollowToggle(character, player, showMessage);
         }
 
-        AnimalAI animalAi = character.GetComponent<AnimalAI>();
-        if (animalAi == null)
+        JuvenileFollowRpc.RequestToggle(nview.GetZDO().m_uid, player.GetZDOID(), showMessage);
+        return true;
+    }
+
+    public static bool ApplyFollowToggle(Character character, Player player, bool showMessage)
+    {
+        if (character == null || player == null)
         {
             return false;
         }
 
-        JuvenileFollowController.EnsureAttached(character);
-        JuvenileFollowRpcHandler.EnsureAttached(character);
+        Tameable tameable = character.GetComponent<Tameable>();
+        MonsterAI monsterAi = character.GetComponent<MonsterAI>();
+        if (tameable != null && monsterAi != null)
+        {
+            tameable.m_commandable = true;
+            ApplyMonsterFollowToggle(tameable, monsterAi, player, showMessage);
+            return true;
+        }
 
-        if (ZNet.instance.IsServer())
+        if (character.GetComponent<AnimalAI>() != null)
         {
             return ApplyAnimalFollowToggle(character, player, showMessage);
         }
 
-        character.GetComponent<JuvenileFollowRpcHandler>()?.RequestToggle(player, showMessage);
-        return true;
+        return false;
     }
 
     public static bool IsFollowing(Character character)

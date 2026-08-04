@@ -87,21 +87,7 @@ public static class TeleportWorldAwakePatch
 {
     private static void Postfix(TeleportWorld __instance)
     {
-        OffspringPortalPrefabs.EnsureIdentity(__instance);
-        if (!OffspringPortalPrefabs.IsOffspringPortal(__instance) || __instance.enabled)
-        {
-            return;
-        }
-
-        ZNetView nview = __instance.GetComponent<ZNetView>();
-        if (nview?.GetZDO() != null)
-        {
-            __instance.transform.localScale = Vector3.one * PortalPlacement.PortalScale;
-            __instance.m_exitDistance = PortalPlacement.ScaledExitDistance;
-            OffspringPortalInitializer.CompleteTeleportWorldAwake(__instance, nview);
-            OffspringPortalPrefabs.EnsureRuntimeTriggers(__instance);
-            PortalHelper.SyncRegistryFromPortal(__instance);
-        }
+        PortalHelper.EnsurePortalInitialized(__instance);
     }
 }
 
@@ -111,8 +97,10 @@ public static class GameStartPatch
     private static void Postfix()
     {
         PortalRpc.Register();
+        JuvenileFollowRpc.Register();
         PortalHelper.RebuildRegistryFromWorld();
         PortalTravelGuard.ClearAllOffspringTravelBindings();
+        XPortalCompat.PurgeKnownPortals();
         OffspringPortalRuntime.Instance.StartCoroutine(DelayedRegistryRebuild());
     }
 
@@ -120,6 +108,7 @@ public static class GameStartPatch
     {
         yield return new WaitForSeconds(2f);
         PortalHelper.RebuildRegistryFromWorld();
+        XPortalCompat.PurgeKnownPortals();
     }
 }
 
@@ -158,11 +147,11 @@ public static class OffspringPortalInteractPatch
             return true;
         }
 
-        SpeciesType species = SpeciesCatalog.FromStorageValue(zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty));
+        string speciesKey = zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty);
         PortalRole role = PortalRoleCatalog.FromZdo(zdo);
         string portalName = zdo.GetString(ZdoFields.PortalName, string.Empty);
         AdultDestination adultDestination = PortalRoleCatalog.GetAdultDestination(zdo);
-        SpeciesConfigPanel.Instance.Open(zdo.m_uid, role, species, portalName, adultDestination);
+        SpeciesConfigPanel.Instance.Open(zdo.m_uid, role, speciesKey, portalName, adultDestination);
         __result = true;
         return false;
     }
@@ -187,11 +176,11 @@ public static class TextInputPatch
             return true;
         }
 
-        SpeciesType species = SpeciesCatalog.FromStorageValue(zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty));
+        string speciesKey = zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty);
         PortalRole role = PortalRoleCatalog.FromZdo(zdo);
         string portalName = zdo.GetString(ZdoFields.PortalName, string.Empty);
         AdultDestination adultDestination = PortalRoleCatalog.GetAdultDestination(zdo);
-        SpeciesConfigPanel.Instance.Open(zdo.m_uid, role, species, portalName, adultDestination);
+        SpeciesConfigPanel.Instance.Open(zdo.m_uid, role, speciesKey, portalName, adultDestination);
         return false;
     }
 }
@@ -216,10 +205,10 @@ public static class TeleportWorldHoverPatch
         }
 
         PortalRole role = PortalRoleCatalog.FromZdo(zdo);
-        SpeciesType species = SpeciesCatalog.FromStorageValue(zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty));
+        string speciesKey = zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty);
         AdultDestination adultDestination = PortalRoleCatalog.GetAdultDestination(zdo);
         bool capWarning = zdo.GetBool(ZdoFields.CapWarning);
-        __result = PortalDisplayHelper.GetHoverText(zdo, role, species, adultDestination, capWarning);
+        __result = PortalDisplayHelper.GetHoverText(zdo, role, speciesKey, adultDestination, capWarning);
     }
 }
 
@@ -239,19 +228,9 @@ public static class WearNTearOnPlacedPatch
         }
 
         TeleportWorld portal = __instance.GetComponent<TeleportWorld>();
-        ZNetView nview = __instance.GetComponent<ZNetView>();
-        if (portal != null && nview?.GetZDO() != null && !portal.enabled)
-        {
-            OffspringPortalInitializer.CompleteTeleportWorldAwake(portal, nview);
-        }
-
         if (portal != null)
         {
-            OffspringPortalPrefabs.EnsureIdentity(portal);
-            portal.m_exitDistance = PortalPlacement.ScaledExitDistance;
-            OffspringPortalPrefabs.EnsureRuntimeTriggers(portal);
-            PortalTravelGuard.ClearTravelBindings(portal);
-            PortalHelper.SyncRegistryFromPortal(portal);
+            PortalHelper.EnsurePortalInitialized(portal);
         }
     }
 }
@@ -366,7 +345,6 @@ public static class PlayerJuvenileInteractPatch
 
         JuvenileGroundSnapper.EnsureAttached(creature);
         JuvenileFollowController.EnsureAttached(creature);
-        JuvenileFollowRpcHandler.EnsureAttached(creature);
 
         if (JuvenileFollow.TryCommand(creature, __instance, showMessage: true))
         {
@@ -414,7 +392,6 @@ public static class CharacterAwakePatch
     {
         JuvenileGroundSnapper.EnsureAttached(__instance);
         JuvenileFollowController.EnsureAttached(__instance);
-        JuvenileFollowRpcHandler.EnsureAttached(__instance);
     }
 }
 
@@ -430,6 +407,38 @@ public static class AnimalAIFollowPatch
 
         __result = true;
         return false;
+    }
+}
+
+[HarmonyPatch(typeof(AnimalAI), nameof(AnimalAI.UpdateAI))]
+[HarmonyPriority(1)]
+public static class AnimalAIMateDrawPatch
+{
+    private static bool Prefix(AnimalAI __instance, float dt, ref bool __result)
+    {
+        if (MateDrawController.TryApplyAnimalMateDraw(__instance, dt))
+        {
+            __result = true;
+            return false;
+        }
+
+        return true;
+    }
+}
+
+[HarmonyPatch(typeof(MonsterAI), nameof(MonsterAI.UpdateAI))]
+[HarmonyPriority(1)]
+public static class MonsterAIMateDrawPatch
+{
+    private static bool Prefix(MonsterAI __instance, float dt, ref bool __result)
+    {
+        if (MateDrawController.TryApplyMonsterMateDraw(__instance, dt))
+        {
+            __result = true;
+            return false;
+        }
+
+        return true;
     }
 }
 

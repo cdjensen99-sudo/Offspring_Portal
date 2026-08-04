@@ -26,6 +26,27 @@ public static class SpeciesCatalog
         SpeciesType.All
     };
 
+    public static readonly IReadOnlyList<string> KnownAdultPrefabFragments = new[]
+    {
+        "Boar",
+        "WolfCub",
+        "Wolf",
+        "Lox",
+        "Hen",
+        "Chicken",
+        "Asksvin"
+    };
+
+    public static readonly IReadOnlyList<string> LegacyDestinationOptionKeys = new[]
+    {
+        "Boar",
+        "Wolf",
+        "Lox",
+        "Chicken",
+        "Asksvin",
+        SpeciesKey.All
+    };
+
     public static string ToStorageValue(SpeciesType species)
     {
         return species == SpeciesType.None ? string.Empty : species.ToString();

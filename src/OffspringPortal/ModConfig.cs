@@ -13,6 +13,11 @@ public static class ModConfig
     public static ConfigEntry<bool> EnableFollowCommand;
     public static ConfigEntry<bool> EnableCapWarning;
     public static ConfigEntry<float> MaturingAdultScanIntervalSec;
+    public static ConfigEntry<float> DiscoveryScanRange;
+    public static ConfigEntry<bool> EnableMateDraw;
+    public static ConfigEntry<float> MateDrawRange;
+    public static ConfigEntry<float> MateDrawIntervalSec;
+    public static ConfigEntry<float> MateDrawStopDistance;
 
     public static void Bind(ConfigFile config)
     {
@@ -32,5 +37,31 @@ public static class ModConfig
             "Show warning when a maturing portal is within species cap radius of a breeder portal.");
         MaturingAdultScanIntervalSec = config.Bind("General", "MaturingAdultScanIntervalSec", 30f,
             "How often maturing portals scan for nearby adults to forward to cull pens.");
+        DiscoveryScanRange = config.Bind("Breeding", "DiscoveryScanRange", 0f,
+            "Radius for discovering breedable species at breeder portals (0 = max of breeder scan and mate draw range).");
+        EnableMateDraw = config.Bind("Breeding", "EnableMateDraw", true,
+            "Draw fed, ready-to-breed adults toward each other within breeder portal range.");
+        MateDrawRange = config.Bind("Breeding", "MateDrawRange", 15f,
+            "How far apart mates can be before breeder portals nudge them together (meters).");
+        MateDrawIntervalSec = config.Bind("Breeding", "MateDrawIntervalSec", 1.5f,
+            "How often breeder portals scan for mate-draw pairing.");
+        MateDrawStopDistance = config.Bind("Breeding", "MateDrawStopDistance", 2.5f,
+            "How close mates move before stopping (should be within vanilla breeding range).");
+    }
+
+    public static float GetDiscoveryScanRange()
+    {
+        if (DiscoveryScanRange.Value > 0f)
+        {
+            return DiscoveryScanRange.Value;
+        }
+
+        float breederRange = BreederScanRange.Value;
+        if (!EnableMateDraw.Value)
+        {
+            return breederRange;
+        }
+
+        return UnityEngine.Mathf.Max(breederRange, MateDrawRange.Value);
     }
 }

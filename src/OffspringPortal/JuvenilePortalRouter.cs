@@ -67,19 +67,25 @@ public static class JuvenilePortalRouter
             return false;
         }
 
-        SpeciesType species = SpeciesHelper.GetJuvenileSpecies(character);
-        if (!DestinationRegistry.TryResolveMaturingDestination(species, out PortalRecord destination))
+        string speciesKey = SpeciesHelper.GetJuvenileSpeciesKey(character);
+        if (string.IsNullOrEmpty(speciesKey))
+        {
+            return false;
+        }
+
+        if (!DestinationRegistry.TryResolveMaturingDestination(speciesKey, out PortalRecord destination))
         {
             if (now - lastNoDestinationMessageTime > 5f)
             {
                 lastNoDestinationMessageTime = now;
+                string displayName = SpeciesKey.GetDisplayName(speciesKey);
                 OffspringPortalPlugin.Log.LogWarning(
-                    $"No maturing portal registered for {SpeciesCatalog.GetDisplayName(species)}.");
+                    $"No maturing portal registered for {displayName}.");
                 Player local = Player.m_localPlayer;
                 if (local != null)
                 {
                     local.Message(MessageHud.MessageType.Center,
-                        $"No maturing portal registered for {SpeciesCatalog.GetDisplayName(species)}.");
+                        $"No maturing portal registered for {displayName}.");
                 }
             }
 
@@ -89,12 +95,12 @@ public static class JuvenilePortalRouter
         if (!JuvenileTeleporter.TryTeleport(character, destination, portal))
         {
             OffspringPortalPlugin.Log.LogWarning(
-                $"Failed to teleport {SpeciesCatalog.GetDisplayName(species)} juvenile.");
+                $"Failed to teleport {SpeciesKey.GetDisplayName(speciesKey)} juvenile.");
             return false;
         }
 
         OffspringPortalPlugin.Log.LogInfo(
-            $"Teleported {SpeciesCatalog.GetDisplayName(species)} juvenile to maturing portal at {destination.Position}.");
+            $"Teleported {SpeciesKey.GetDisplayName(speciesKey)} juvenile to maturing portal at {destination.Position}.");
         cooldowns[bodyId] = now + ModConfig.TeleportCooldownSec.Value;
         PlayPortalActivation(portal);
         return true;

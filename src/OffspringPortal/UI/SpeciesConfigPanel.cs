@@ -33,10 +33,10 @@ public sealed class SpeciesConfigPanel
     private Dropdown speciesDropdown;
     private Dropdown destinationDropdown;
     private readonly Dictionary<int, PortalRole> indexToRole = new Dictionary<int, PortalRole>();
-    private readonly Dictionary<int, SpeciesType> indexToSpecies = new Dictionary<int, SpeciesType>();
+    private readonly Dictionary<int, string> indexToSpeciesKey = new Dictionary<int, string>();
     private readonly Dictionary<int, AdultDestination> indexToDestination = new Dictionary<int, AdultDestination>();
     private ZDOID portalId;
-    private SpeciesType savedSpecies = SpeciesType.Boar;
+    private string savedSpeciesKey = "Boar";
     private AdultDestination savedDestination = AdultDestination.None;
     private bool initialized;
 
@@ -45,7 +45,7 @@ public sealed class SpeciesConfigPanel
     public void Open(
         ZDOID id,
         PortalRole currentRole,
-        SpeciesType currentSpecies,
+        string currentSpeciesKey,
         string currentName,
         AdultDestination adultDestination)
     {
@@ -55,16 +55,30 @@ public sealed class SpeciesConfigPanel
             return;
         }
 
+        BreedableSpeciesRegistry.RefreshFromAllBreeders();
         portalId = id;
-        savedSpecies = currentSpecies == SpeciesType.None ? SpeciesType.Boar : currentSpecies;
+        savedSpeciesKey = string.IsNullOrWhiteSpace(currentSpeciesKey) ? "Boar" : currentSpeciesKey;
         savedDestination = adultDestination;
         nameInputField.text = currentName ?? string.Empty;
         PopulateTypeDropdown(currentRole);
-        PopulateSpeciesDropdown(savedSpecies);
+        PopulateSpeciesDropdown(savedSpeciesKey);
         PopulateDestinationDropdown(savedDestination);
         UpdatePanelState();
         mainPanel.SetActive(true);
         GUIManager.BlockInput(true);
+    }
+
+    public void Open(
+        ZDOID id,
+        PortalRole currentRole,
+        SpeciesType currentSpecies,
+        string currentName,
+        AdultDestination adultDestination)
+    {
+        string speciesKey = currentSpecies == SpeciesType.None
+            ? string.Empty
+            : SpeciesCatalog.ToStorageValue(currentSpecies);
+        Open(id, currentRole, speciesKey, currentName, adultDestination);
     }
 
     public void Close()
@@ -266,27 +280,100 @@ public sealed class SpeciesConfigPanel
         typeDropdown.RefreshShownValue();
     }
 
-    private void PopulateSpeciesDropdown(SpeciesType currentSpecies)
+    private void PopulateSpeciesDropdown(string currentSpeciesKey)
+    {
+        if (indexToRole.TryGetValue(typeDropdown.value, out PortalRole role)
+            && role == PortalRole.EggCollector)
+        {
+            PopulateEggCollectorDropdown(currentSpeciesKey);
+            return;
+        }
+
+        PopulateMaturingSpeciesDropdown(currentSpeciesKey);
+    }
+
+    private void PopulateMaturingSpeciesDropdown(string currentSpeciesKey)
     {
         speciesDropdown.ClearOptions();
-        indexToSpecies.Clear();
+        indexToSpeciesKey.Clear();
 
+        IReadOnlyList<string> optionKeys = BreedableSpeciesRegistry.GetMaturingOptionKeysWithFallback();
         int selectedIndex = 0;
-        int index = 0;
-        foreach (SpeciesType species in SpeciesCatalog.DestinationOptions)
+        for (int index = 0; index < optionKeys.Count; index++)
         {
-            indexToSpecies[index] = species;
-            speciesDropdown.options.Add(new Dropdown.OptionData(SpeciesCatalog.GetDisplayName(species)));
-            if (species == currentSpecies)
+            string key = optionKeys[index];
+            indexToSpeciesKey[index] = key;
+            speciesDropdown.options.Add(new Dropdown.OptionData(SpeciesKey.GetDisplayName(key)));
+            if (key.Equals(currentSpeciesKey, StringComparison.OrdinalIgnoreCase))
             {
                 selectedIndex = index;
             }
+        }
 
-            index++;
+        if (optionKeys.Count == 0)
+        {
+            indexToSpeciesKey[0] = SpeciesKey.All;
+            speciesDropdown.options.Add(new Dropdown.OptionData("All"));
+            selectedIndex = 0;
+        }
+        else if (!ContainsSpeciesKey(optionKeys, currentSpeciesKey))
+        {
+            savedSpeciesKey = optionKeys[0];
+            selectedIndex = 0;
         }
 
         speciesDropdown.value = selectedIndex;
         speciesDropdown.RefreshShownValue();
+    }
+
+    private void PopulateEggCollectorDropdown(string currentEggKey)
+    {
+        speciesDropdown.ClearOptions();
+        indexToSpeciesKey.Clear();
+
+        IReadOnlyList<string> optionKeys = BreedableSpeciesRegistry.GetEggCollectorOptionKeys();
+        if (optionKeys.Count == 0)
+        {
+            indexToSpeciesKey[0] = string.Empty;
+            speciesDropdown.options.Add(new Dropdown.OptionData("No dual-purpose egg layers discovered"));
+            speciesDropdown.value = 0;
+            speciesDropdown.RefreshShownValue();
+            return;
+        }
+
+        int selectedIndex = 0;
+        for (int index = 0; index < optionKeys.Count; index++)
+        {
+            string key = optionKeys[index];
+            indexToSpeciesKey[index] = key;
+            speciesDropdown.options.Add(new Dropdown.OptionData(SpeciesKey.GetEggCollectorDisplayName(key)));
+            if (SpeciesKey.PortalAcceptsEgg(key, currentEggKey))
+            {
+                selectedIndex = index;
+            }
+        }
+
+        if (!ContainsSpeciesKey(optionKeys, currentEggKey))
+        {
+            savedSpeciesKey = optionKeys[0];
+            selectedIndex = 0;
+        }
+
+        speciesDropdown.value = selectedIndex;
+        speciesDropdown.RefreshShownValue();
+    }
+
+    private static bool ContainsSpeciesKey(IReadOnlyList<string> keys, string currentSpeciesKey)
+    {
+        foreach (string key in keys)
+        {
+            if (key.Equals(currentSpeciesKey, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void PopulateDestinationDropdown(AdultDestination currentDestination)
@@ -314,7 +401,7 @@ public sealed class SpeciesConfigPanel
         if (indexToRole.TryGetValue(typeDropdown.value, out PortalRole role)
             && role != PortalRole.Breeder)
         {
-            PopulateSpeciesDropdown(savedSpecies);
+            PopulateSpeciesDropdown(savedSpeciesKey);
         }
 
         UpdatePanelState();
@@ -322,9 +409,9 @@ public sealed class SpeciesConfigPanel
 
     private void OnSpeciesChanged(int index)
     {
-        if (indexToSpecies.TryGetValue(speciesDropdown.value, out SpeciesType species))
+        if (indexToSpeciesKey.TryGetValue(speciesDropdown.value, out string speciesKey))
         {
-            savedSpecies = species;
+            savedSpeciesKey = speciesKey;
         }
     }
 
@@ -343,7 +430,7 @@ public sealed class SpeciesConfigPanel
             role = PortalRole.Breeder;
         }
 
-        bool showReceives = role == PortalRole.Maturing || role == PortalRole.Farm;
+        bool showReceives = role == PortalRole.Maturing || role == PortalRole.Farm || role == PortalRole.EggCollector;
         bool showDestination = role == PortalRole.Maturing;
         receivesLabelObject.SetActive(showReceives);
         speciesDropdown.gameObject.SetActive(showReceives);
@@ -370,10 +457,17 @@ public sealed class SpeciesConfigPanel
             return;
         }
 
+        if (role == PortalRole.EggCollector)
+        {
+            speciesDropdown.interactable = BreedableSpeciesRegistry.GetEggCollectorOptionKeys().Count > 0;
+            PopulateEggCollectorDropdown(savedSpeciesKey);
+            return;
+        }
+
         speciesDropdown.interactable = true;
         if (speciesDropdown.options.Count <= 1)
         {
-            PopulateSpeciesDropdown(savedSpecies);
+            PopulateSpeciesDropdown(savedSpeciesKey);
         }
 
         if (showDestination && destinationDropdown.options.Count <= 1)
@@ -389,11 +483,11 @@ public sealed class SpeciesConfigPanel
             : PortalRole.Breeder;
     }
 
-    private SpeciesType GetSelectedSpecies()
+    private string GetSelectedSpeciesKey()
     {
-        return indexToSpecies.TryGetValue(speciesDropdown.value, out SpeciesType species)
-            ? species
-            : SpeciesType.Boar;
+        return indexToSpeciesKey.TryGetValue(speciesDropdown.value, out string speciesKey)
+            ? speciesKey
+            : savedSpeciesKey;
     }
 
     private AdultDestination GetSelectedDestination()
@@ -406,9 +500,9 @@ public sealed class SpeciesConfigPanel
     private void OnOkClicked()
     {
         PortalRole role = GetSelectedRole();
-        SpeciesType species = PortalRoleCatalog.ResolveSpecies(role, GetSelectedSpecies());
+        string speciesKey = PortalRoleCatalog.ResolveSpeciesKey(role, GetSelectedSpeciesKey());
         AdultDestination destination = GetSelectedDestination();
-        PortalRpc.SetPortalConfig(portalId, role, species, nameInputField.text, destination);
+        PortalRpc.SetPortalConfig(portalId, role, speciesKey, nameInputField.text, destination);
         Close();
     }
 }

@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.3.5
+- Removed pregnant glow visual (out of scope for this mod)
+- Updated README, wiki, and Discord docs: dynamic discovery, egg routing, mate draw, mod creator breedable criteria
+
+## 0.3.4
+- Fix species discovery with a single animal (wider discovery radius, fallback registration)
+- Refresh breedable species list every breeder scan instead of every 5 seconds
+- Mate draw skips hungry animals explicitly
+- Pregnant glow attaches to existing animals on load; emissive sphere + stronger light
+
+## 0.3.3
+- Breeder portal mate draw: fed, ready adults within 15m nudge toward each other to reach breeding range
+- Subtle warm glow on pregnant breedable adults
+- Config section `Breeding` for mate draw and pregnant glow settings
+
+## 0.3.0
+- Dynamic breedable species discovery from breeder portals (Procreation, Growup, egg layers)
+- Maturing and Farm portal species lists built from discovered pens (deduped, includes All)
+- Mod creature support via prefab-name species keys (no manual creature list)
+- Egg routing at breeder: dual-purpose eggs to Egg Collector portal, else maturing (species then All)
+- Single-use hatch-only eggs follow the same maturing routing as live-born juveniles
+- New Egg Collector portal role for dual-purpose egg disposition (heat/no heat at destination)
+
+## 0.2.15
+- Thunderstore README and wiki: Team Extreme Discord link, feature list, and support section updates
+
+## 0.2.14
+- Fixed offspring portals reappearing in XPortal as "(No Name)" entries (stronger XPortal list filtering and purge on world load)
+- README and wiki: Discord community section, feature list, and troubleshooting updates
+
+## 0.2.13
+- Fixed juvenile follow/stay command not working for players who joined a hosted game (routes follow toggle through server RPC)
+
+## 0.2.12
+- Fixed startup Harmony error: removed invalid ZNetView.Start patch (Valheim's ZNetView has no Start method)
+
+## 0.2.11
+- Fixed offspring portals placed by remote players in hosted games not routing juveniles until rebuilt
+- Fixed portals spawned via Prefabhammer (or other tools that skip standard placement) not initializing scanners or registry entries
+
+## 0.2.10
+- Thunderstore README: GitHub Issues link for support, player-travel note, source repo link
+
 ## 0.2.9
 - Block player travel to and from offspring portals (fixes XPortal bounce-back)
 - Exclude offspring portals from XPortal's portal list when XPortal is installed

@@ -12,7 +12,7 @@ public sealed class OffspringPortalPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "offspringportal.mod";
     public const string PluginName = "Offspring Portal";
-    public const string PluginVersion = "0.2.9";
+    public const string PluginVersion = "0.3.5";
 
     internal static ManualLogSource Log;
     private Harmony harmony;

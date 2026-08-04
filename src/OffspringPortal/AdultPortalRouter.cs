@@ -64,8 +64,8 @@ public static class AdultPortalRouter
             return false;
         }
 
-        SpeciesType species = SpeciesHelper.GetAdultSpecies(character);
-        if (!SpeciesHelper.SpeciesMatches(species, source.DeclaredSpecies))
+        string speciesKey = SpeciesHelper.GetAdultSpeciesKey(character);
+        if (!SpeciesHelper.SpeciesKeyMatches(speciesKey, source.DeclaredSpeciesKey))
         {
             return false;
         }
@@ -75,7 +75,7 @@ public static class AdultPortalRouter
         switch (source.AdultDestination)
         {
             case AdultDestination.Farm:
-                if (DestinationRegistry.TryResolveFarmDestination(species, out destination))
+                if (DestinationRegistry.TryResolveFarmDestination(speciesKey, out destination))
                 {
                     break;
                 }
@@ -97,12 +97,12 @@ public static class AdultPortalRouter
         if (!JuvenileTeleporter.TryTeleport(character, destination, portal))
         {
             OffspringPortalPlugin.Log.LogWarning(
-                $"Failed to teleport {SpeciesCatalog.GetDisplayName(species)} adult.");
+                $"Failed to teleport {SpeciesKey.GetDisplayName(speciesKey)} adult.");
             return false;
         }
 
         OffspringPortalPlugin.Log.LogInfo(
-            $"Teleported {SpeciesCatalog.GetDisplayName(species)} adult to {source.AdultDestination} portal at {destination.Position}.");
+            $"Teleported {SpeciesKey.GetDisplayName(speciesKey)} adult to {source.AdultDestination} portal at {destination.Position}.");
         cooldowns[bodyId] = now + ModConfig.TeleportCooldownSec.Value;
         PlayPortalActivation(portal);
         return true;

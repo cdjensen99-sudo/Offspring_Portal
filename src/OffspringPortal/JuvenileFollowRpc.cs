@@ -2,72 +2,64 @@ using UnityEngine;
 
 namespace OffspringPortal;
 
-public sealed class JuvenileFollowRpcHandler : MonoBehaviour
+public static class JuvenileFollowRpc
 {
-    private const string ToggleFollowRpc = "op_toggle_follow";
-    private ZNetView nview;
-    private bool registered;
+    private const string RpcToggleFollow = "OffspringPortal_ToggleJuvenileFollow";
 
-    private void Awake()
+    public static void Register()
     {
-        nview = GetComponent<ZNetView>();
+        ZRoutedRpc.instance.Register<ZDOID, ZDOID, bool>(RpcToggleFollow, OnToggleFollowRpc);
     }
 
-    private void Start()
+    public static void RequestToggle(ZDOID creatureId, ZDOID playerId, bool showMessage)
     {
-        TryRegister();
+        ZRoutedRpc.instance.InvokeRoutedRPC(RpcToggleFollow, creatureId, playerId, showMessage);
     }
 
-    private void TryRegister()
-    {
-        if (registered || nview == null || !nview.IsValid())
-        {
-            return;
-        }
-
-        nview.Register<ZDOID, bool>(ToggleFollowRpc, RPC_ToggleFollow);
-        registered = true;
-    }
-
-    public void RequestToggle(Player player, bool showMessage)
-    {
-        TryRegister();
-        if (nview == null || !nview.IsValid() || player == null)
-        {
-            return;
-        }
-
-        nview.InvokeRPC(ToggleFollowRpc, player.GetZDOID(), showMessage);
-    }
-
-    private void RPC_ToggleFollow(long sender, ZDOID playerId, bool showMessage)
+    private static void OnToggleFollowRpc(long sender, ZDOID creatureId, ZDOID playerId, bool showMessage)
     {
         if (!ZNet.instance.IsServer())
         {
             return;
         }
 
-        Character character = GetComponent<Character>();
-        Player player = Player.GetPlayer(sender)
-            ?? ZNetScene.instance.FindInstance(playerId)?.GetComponent<Player>();
-        if (character == null || player == null)
-        {
-            return;
-        }
-
-        JuvenileFollow.ApplyAnimalFollowToggle(character, player, showMessage);
+        ApplyToggle(creatureId, playerId, showMessage, sender);
     }
 
-    public static void EnsureAttached(Character character)
+    private static void ApplyToggle(ZDOID creatureId, ZDOID playerId, bool showMessage, long sender)
     {
-        if (character == null || character.GetComponent<AnimalAI>() == null)
+        Character creature = ResolveCreature(creatureId);
+        Player player = ResolveRequestingPlayer(sender, playerId);
+        if (creature == null || player == null)
         {
             return;
         }
 
-        if (character.GetComponent<JuvenileFollowRpcHandler>() == null)
+        if (!SpeciesHelper.IsEligibleJuvenile(creature) || !creature.IsTamed())
         {
-            character.gameObject.AddComponent<JuvenileFollowRpcHandler>();
+            return;
         }
+
+        JuvenileGroundSnapper.EnsureAttached(creature);
+        JuvenileFollowController.EnsureAttached(creature);
+        JuvenileFollow.ApplyFollowToggle(creature, player, showMessage);
+    }
+
+    private static Character ResolveCreature(ZDOID creatureId)
+    {
+        GameObject instance = ZNetScene.instance?.FindInstance(creatureId);
+        return instance != null ? instance.GetComponent<Character>() : null;
+    }
+
+    private static Player ResolveRequestingPlayer(long sender, ZDOID playerId)
+    {
+        Player senderPlayer = Player.GetPlayer(sender);
+        if (senderPlayer != null)
+        {
+            return senderPlayer;
+        }
+
+        GameObject instance = ZNetScene.instance?.FindInstance(playerId);
+        return instance != null ? instance.GetComponent<Player>() : null;
     }
 }

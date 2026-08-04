@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using HarmonyLib;
 using Jotunn.Managers;
 using UnityEngine;
@@ -17,31 +16,10 @@ public class OffspringPortalMarker : MonoBehaviour
 
     private void Start()
     {
-        if (teleportWorld != null && !teleportWorld.enabled)
+        if (teleportWorld != null)
         {
-            StartCoroutine(InitializeTeleportWorldWhenReady());
+            PortalHelper.EnsurePortalInitialized(teleportWorld);
         }
-    }
-
-    private IEnumerator InitializeTeleportWorldWhenReady()
-    {
-        ZNetView nview = GetComponent<ZNetView>();
-        for (int i = 0; i < 30; i++)
-        {
-            if (nview != null && nview.GetZDO() != null)
-            {
-                break;
-            }
-
-            yield return null;
-        }
-
-        if (teleportWorld == null || nview == null || nview.GetZDO() == null || teleportWorld.enabled)
-        {
-            yield break;
-        }
-
-        OffspringPortalInitializer.CompleteTeleportWorldAwake(teleportWorld, nview);
     }
 }
 

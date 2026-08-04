@@ -1,8 +1,8 @@
 {
   "name": "Offspring_Portal",
-  "version_number": "0.2.9",
-  "website_url": "",
-  "description": "Teleports tamed juveniles from breeder portals to maturing pens. Optional adult routing to farm or cull. Press E on juveniles to toggle follow/stay.",
+  "version_number": "0.3.5",
+  "website_url": "https://discord.gg/cCNG8xKXMn",
+  "description": "Teleports tamed juveniles and breedable eggs from breeder portals. Dynamic species discovery from breeding pens. Dual-purpose egg collector portal. Mod creature support.",
   "dependencies": [
     "denikson-BepInExPack_Valheim-5.4.2202",
     "ValheimModding-Jotunn-2.26.0"

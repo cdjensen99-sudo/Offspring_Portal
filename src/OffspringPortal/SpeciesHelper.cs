@@ -1,21 +1,9 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace OffspringPortal;
 
 public static class SpeciesHelper
 {
-    private static readonly Dictionary<string, SpeciesType> AdultPrefabMap = new Dictionary<string, SpeciesType>(System.StringComparer.OrdinalIgnoreCase)
-    {
-        { "Boar", SpeciesType.Boar },
-        { "Wolf", SpeciesType.Wolf },
-        { "WolfCub", SpeciesType.Wolf },
-        { "Lox", SpeciesType.Lox },
-        { "Hen", SpeciesType.Chicken },
-        { "Chicken", SpeciesType.Chicken },
-        { "Asksvin", SpeciesType.Asksvin }
-    };
-
     public static bool IsEligibleJuvenile(Character character)
     {
         if (character == null || !character.IsTamed())
@@ -37,81 +25,54 @@ public static class SpeciesHelper
         return character != null
             && character.IsTamed()
             && character.GetComponent<Growup>() == null
-            && GetAdultSpecies(character) != SpeciesType.None;
+            && !string.IsNullOrEmpty(GetAdultSpeciesKey(character));
     }
 
     public static SpeciesType GetAdultSpecies(Character character)
     {
-        return MapAdultPrefab(character?.name);
+        return SpeciesKey.ToLegacySpecies(GetAdultSpeciesKey(character));
     }
 
     public static SpeciesType GetJuvenileSpecies(Character character)
     {
-        Growup growup = character.GetComponent<Growup>();
-        if (growup == null)
-        {
-            return SpeciesType.None;
-        }
+        return SpeciesKey.ToLegacySpecies(GetJuvenileSpeciesKey(character));
+    }
 
-        if (growup.m_grownPrefab != null)
+    public static string GetAdultSpeciesKey(Character character)
+    {
+        return SpeciesDiscovery.GetAdultSpeciesKey(character);
+    }
+
+    public static string GetJuvenileSpeciesKey(Character character)
+    {
+        Growup growup = character?.GetComponent<Growup>();
+        if (growup != null)
         {
-            SpeciesType mapped = MapAdultPrefab(growup.m_grownPrefab.name);
-            if (mapped != SpeciesType.None)
+            string mapped = SpeciesDiscovery.GetSpeciesKey(character);
+            if (!string.IsNullOrEmpty(mapped))
             {
                 return mapped;
             }
         }
 
-        if (growup.m_altGrownPrefabs != null)
+        string prefabName = character?.name ?? string.Empty;
+        if (prefabName.IndexOf("wolfcub", System.StringComparison.OrdinalIgnoreCase) >= 0)
         {
-            foreach (Growup.GrownEntry entry in growup.m_altGrownPrefabs)
-            {
-                if (entry?.m_prefab == null)
-                {
-                    continue;
-                }
-
-                SpeciesType mapped = MapAdultPrefab(entry.m_prefab.name);
-                if (mapped != SpeciesType.None)
-                {
-                    return mapped;
-                }
-            }
+            return SpeciesCatalog.ToStorageValue(SpeciesType.Wolf);
         }
 
-        return MapAdultPrefab(character.name);
+        return string.Empty;
     }
 
     public static bool SpeciesMatches(SpeciesType juvenile, SpeciesType destination)
     {
-        if (destination == SpeciesType.None)
-        {
-            return false;
-        }
-
-        if (destination == SpeciesType.All)
-        {
-            return true;
-        }
-
-        return juvenile == destination;
+        return SpeciesKey.Matches(
+            SpeciesCatalog.ToStorageValue(juvenile),
+            SpeciesCatalog.ToStorageValue(destination));
     }
 
-    private static SpeciesType MapAdultPrefab(string prefabName)
+    public static bool SpeciesKeyMatches(string creatureKey, string destinationKey)
     {
-        if (string.IsNullOrWhiteSpace(prefabName))
-        {
-            return SpeciesType.None;
-        }
-
-        foreach (KeyValuePair<string, SpeciesType> pair in AdultPrefabMap)
-        {
-            if (prefabName.IndexOf(pair.Key, System.StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return pair.Value;
-            }
-        }
-
-        return SpeciesType.None;
+        return SpeciesKey.Matches(creatureKey, destinationKey);
     }
 }

@@ -160,7 +160,6 @@ public static class JuvenileTeleporter
 
         JuvenileGroundSnapper.EnsureAttached(juvenile);
         JuvenileFollowController.EnsureAttached(juvenile);
-        JuvenileFollowRpcHandler.EnsureAttached(juvenile);
 
         ZDO zdo = nview.GetZDO();
 

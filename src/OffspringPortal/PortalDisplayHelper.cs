@@ -29,12 +29,12 @@ public static class PortalDisplayHelper
         return string.IsNullOrEmpty(name) ? UnnamedDisplay : name;
     }
 
-    public static string GetDetailLine(PortalRole role, SpeciesType species, AdultDestination adultDestination)
+    public static string GetDetailLine(PortalRole role, string speciesKey, AdultDestination adultDestination)
     {
         switch (role)
         {
             case PortalRole.Maturing:
-                string line = $"Receives: {SpeciesCatalog.GetDisplayName(species)} juveniles";
+                string line = $"Receives: {SpeciesKey.GetDisplayName(speciesKey)} juveniles";
                 if (adultDestination != AdultDestination.None)
                 {
                     line += $"\nDestination: {PortalRoleCatalog.GetDisplayName(adultDestination)}";
@@ -42,12 +42,37 @@ public static class PortalDisplayHelper
 
                 return line;
             case PortalRole.Farm:
-                return $"Receives: {SpeciesCatalog.GetDisplayName(species)} adults";
+                return $"Receives: {SpeciesKey.GetDisplayName(speciesKey)} adults";
             case PortalRole.Cull:
                 return "Role: Cull yard";
+            case PortalRole.EggCollector:
+                return $"Receives: {SpeciesKey.GetDisplayName(speciesKey)}";
             default:
                 return "Role: Breeder";
         }
+    }
+
+    public static string GetDetailLine(PortalRole role, SpeciesType species, AdultDestination adultDestination)
+    {
+        string speciesKey = species == SpeciesType.None
+            ? string.Empty
+            : SpeciesCatalog.ToStorageValue(species);
+        return GetDetailLine(role, speciesKey, adultDestination);
+    }
+
+    public static string GetHoverText(
+        ZDO zdo,
+        PortalRole role,
+        string speciesKey,
+        AdultDestination adultDestination,
+        bool capWarning)
+    {
+        string name = GetDisplayName(zdo);
+        string detail = GetDetailLine(role, speciesKey, adultDestination);
+        string warning = BuildWarnings(role, speciesKey, adultDestination, capWarning);
+
+        return Localization.instance.Localize(
+            $"Name: {name}\n{detail}{warning}\n[<color=yellow><b>$KEY_Use</b></color>] Configure");
     }
 
     public static string GetHoverText(
@@ -57,17 +82,15 @@ public static class PortalDisplayHelper
         AdultDestination adultDestination,
         bool capWarning)
     {
-        string name = GetDisplayName(zdo);
-        string detail = GetDetailLine(role, species, adultDestination);
-        string warning = BuildWarnings(role, species, adultDestination, capWarning);
-
-        return Localization.instance.Localize(
-            $"Name: {name}\n{detail}{warning}\n[<color=yellow><b>$KEY_Use</b></color>] Configure");
+        string speciesKey = species == SpeciesType.None
+            ? string.Empty
+            : SpeciesCatalog.ToStorageValue(species);
+        return GetHoverText(zdo, role, speciesKey, adultDestination, capWarning);
     }
 
     private static string BuildWarnings(
         PortalRole role,
-        SpeciesType species,
+        string speciesKey,
         AdultDestination adultDestination,
         bool capWarning)
     {
@@ -81,13 +104,19 @@ public static class PortalDisplayHelper
         {
             bool missingReceiver = adultDestination == AdultDestination.Cull
                 ? !DestinationRegistry.HasCullReceiver()
-                : !DestinationRegistry.HasFarmReceiver(species);
+                : !DestinationRegistry.HasFarmReceiver(speciesKey);
 
             if (missingReceiver)
             {
                 string destinationName = PortalRoleCatalog.GetDisplayName(adultDestination);
                 warning += $"\n<color=yellow>Warning: No {destinationName} portal exists. Adults will not be teleported.</color>";
             }
+        }
+
+        if (role == PortalRole.Breeder && BreedableSpeciesRegistry.HasDualPurposeEggLayers()
+            && !DestinationRegistry.HasEggCollector())
+        {
+            warning += "\n<color=yellow>Warning: Dual-purpose egg layers detected but no Egg Collector portal exists.</color>";
         }
 
         return warning;

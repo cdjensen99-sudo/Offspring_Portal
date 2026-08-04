@@ -10,15 +10,17 @@ public sealed class PortalRecord
     public Vector3 Position;
     public PortalRole Role;
     public SpeciesType DeclaredSpecies;
+    public string DeclaredSpeciesKey;
     public AdultDestination AdultDestination;
 }
 
 public static class DestinationRegistry
 {
     private static readonly Dictionary<ZDOID, PortalRecord> Portals = new Dictionary<ZDOID, PortalRecord>();
-    private static readonly Dictionary<SpeciesType, int> MaturingRoundRobinIndex = new Dictionary<SpeciesType, int>();
-    private static readonly Dictionary<SpeciesType, int> FarmRoundRobinIndex = new Dictionary<SpeciesType, int>();
+    private static readonly Dictionary<string, int> MaturingRoundRobinIndex = new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, int> FarmRoundRobinIndex = new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
     private static int cullRoundRobinIndex;
+    private static int eggCollectorRoundRobinIndex;
 
     public static void Clear()
     {
@@ -32,6 +34,19 @@ public static class DestinationRegistry
         SpeciesType declaredSpecies,
         AdultDestination adultDestination)
     {
+        string speciesKey = declaredSpecies == SpeciesType.None
+            ? string.Empty
+            : SpeciesCatalog.ToStorageValue(declaredSpecies);
+        RegisterOrUpdate(id, position, role, speciesKey, adultDestination);
+    }
+
+    public static void RegisterOrUpdate(
+        ZDOID id,
+        Vector3 position,
+        PortalRole role,
+        string declaredSpeciesKey,
+        AdultDestination adultDestination)
+    {
         if (!Portals.TryGetValue(id, out PortalRecord record))
         {
             record = new PortalRecord { Id = id };
@@ -40,7 +55,8 @@ public static class DestinationRegistry
 
         record.Position = position;
         record.Role = role;
-        record.DeclaredSpecies = declaredSpecies;
+        record.DeclaredSpeciesKey = declaredSpeciesKey ?? string.Empty;
+        record.DeclaredSpecies = SpeciesCatalog.FromStorageValue(record.DeclaredSpeciesKey);
         record.AdultDestination = adultDestination;
     }
 
@@ -71,8 +87,16 @@ public static class DestinationRegistry
 
     public static bool TryResolveMaturingDestination(SpeciesType juvenileSpecies, out PortalRecord destination)
     {
+        string speciesKey = juvenileSpecies == SpeciesType.None
+            ? string.Empty
+            : SpeciesCatalog.ToStorageValue(juvenileSpecies);
+        return TryResolveMaturingDestination(speciesKey, out destination);
+    }
+
+    public static bool TryResolveMaturingDestination(string speciesKey, out PortalRecord destination)
+    {
         return TryResolveDestination(
-            juvenileSpecies,
+            speciesKey,
             PortalRole.Maturing,
             MaturingRoundRobinIndex,
             out destination);
@@ -80,8 +104,16 @@ public static class DestinationRegistry
 
     public static bool TryResolveFarmDestination(SpeciesType adultSpecies, out PortalRecord destination)
     {
+        string speciesKey = adultSpecies == SpeciesType.None
+            ? string.Empty
+            : SpeciesCatalog.ToStorageValue(adultSpecies);
+        return TryResolveFarmDestination(speciesKey, out destination);
+    }
+
+    public static bool TryResolveFarmDestination(string speciesKey, out PortalRecord destination)
+    {
         return TryResolveDestination(
-            adultSpecies,
+            speciesKey,
             PortalRole.Farm,
             FarmRoundRobinIndex,
             out destination);
@@ -106,26 +138,65 @@ public static class DestinationRegistry
         return true;
     }
 
+    public static bool TryResolveEggCollectorDestination(string eggCollectorKey, out PortalRecord destination)
+    {
+        destination = null;
+        if (string.IsNullOrWhiteSpace(eggCollectorKey))
+        {
+            return false;
+        }
+
+        List<PortalRecord> matches = Portals.Values
+            .Where(p => p.Role == PortalRole.EggCollector
+                        && SpeciesKey.PortalAcceptsEgg(p.DeclaredSpeciesKey, eggCollectorKey))
+            .OrderBy(p => p.Id.ToString())
+            .ToList();
+
+        if (matches.Count == 0)
+        {
+            return false;
+        }
+
+        destination = matches[eggCollectorRoundRobinIndex % matches.Count];
+        eggCollectorRoundRobinIndex++;
+        RefreshPortalPosition(destination);
+        return true;
+    }
+
     public static bool HasCullReceiver()
     {
         return Portals.Values.Any(p => p.Role == PortalRole.Cull);
     }
 
+    public static bool HasEggCollector()
+    {
+        return Portals.Values.Any(p => p.Role == PortalRole.EggCollector);
+    }
+
     public static bool HasFarmReceiver(SpeciesType maturingReceives)
     {
-        if (maturingReceives != SpeciesType.None
-            && maturingReceives != SpeciesType.All
-            && TryResolveFarmDestination(maturingReceives, out _))
+        string speciesKey = maturingReceives == SpeciesType.None
+            ? string.Empty
+            : SpeciesCatalog.ToStorageValue(maturingReceives);
+        return HasFarmReceiver(speciesKey);
+    }
+
+    public static bool HasFarmReceiver(string maturingReceivesKey)
+    {
+        if (!string.IsNullOrEmpty(maturingReceivesKey)
+            && !maturingReceivesKey.Equals(SpeciesKey.All, System.StringComparison.OrdinalIgnoreCase)
+            && TryResolveFarmDestination(maturingReceivesKey, out _))
         {
             return true;
         }
 
-        if (TryResolveFarmDestination(SpeciesType.All, out _))
+        if (TryResolveFarmDestination(SpeciesKey.All, out _))
         {
             return true;
         }
 
-        return maturingReceives == SpeciesType.All
+        return maturingReceivesKey != null
+            && maturingReceivesKey.Equals(SpeciesKey.All, System.StringComparison.OrdinalIgnoreCase)
             && Portals.Values.Any(p => p.Role == PortalRole.Farm);
     }
 
@@ -147,11 +218,18 @@ public static class DestinationRegistry
         }
 
         foreach (PortalRecord destination in Portals.Values.Where(
-                     p => p.Role == PortalRole.Maturing && p.DeclaredSpecies != SpeciesType.All))
+                     p => p.Role == PortalRole.Maturing
+                          && !SpeciesKey.All.Equals(p.DeclaredSpeciesKey, System.StringComparison.OrdinalIgnoreCase)))
         {
+            SpeciesType species = destination.DeclaredSpecies;
+            if (species == SpeciesType.None)
+            {
+                continue;
+            }
+
             bool tooClose = GetBreederPortals().Any(source =>
                 Vector3.Distance(source.Position, destination.Position)
-                <= BreedingCapData.GetCapRadius(destination.DeclaredSpecies));
+                <= BreedingCapData.GetCapRadius(species));
 
             ZDO zdo = ZDOMan.instance.GetZDO(destination.Id);
             if (zdo != null)
@@ -162,37 +240,40 @@ public static class DestinationRegistry
     }
 
     private static bool TryResolveDestination(
-        SpeciesType species,
+        string speciesKey,
         PortalRole requiredRole,
-        Dictionary<SpeciesType, int> roundRobinIndex,
+        Dictionary<string, int> roundRobinIndex,
         out PortalRecord destination)
     {
         destination = null;
-        if (species == SpeciesType.None)
+        if (string.IsNullOrWhiteSpace(speciesKey))
         {
             return false;
         }
 
         List<PortalRecord> specific = Portals.Values
-            .Where(p => p.Role == requiredRole && p.DeclaredSpecies == species)
+            .Where(p => p.Role == requiredRole
+                        && !SpeciesKey.IsAll(p.DeclaredSpeciesKey)
+                        && SpeciesKey.PortalAcceptsSpecies(p.DeclaredSpeciesKey, speciesKey))
             .OrderBy(p => p.Id.ToString())
             .ToList();
 
         if (specific.Count > 0)
         {
-            destination = PickRoundRobin(species, specific, roundRobinIndex);
+            destination = PickRoundRobin(speciesKey, specific, roundRobinIndex);
             RefreshPortalPosition(destination);
             return destination != null;
         }
 
         List<PortalRecord> catchAll = Portals.Values
-            .Where(p => p.Role == requiredRole && p.DeclaredSpecies == SpeciesType.All)
+            .Where(p => p.Role == requiredRole
+                        && SpeciesKey.All.Equals(p.DeclaredSpeciesKey, System.StringComparison.OrdinalIgnoreCase))
             .OrderBy(p => p.Id.ToString())
             .ToList();
 
         if (catchAll.Count > 0)
         {
-            destination = PickRoundRobin(SpeciesType.All, catchAll, roundRobinIndex);
+            destination = PickRoundRobin(SpeciesKey.All, catchAll, roundRobinIndex);
             RefreshPortalPosition(destination);
             return destination != null;
         }
@@ -201,9 +282,9 @@ public static class DestinationRegistry
     }
 
     private static PortalRecord PickRoundRobin(
-        SpeciesType key,
+        string key,
         List<PortalRecord> candidates,
-        Dictionary<SpeciesType, int> roundRobinIndex)
+        Dictionary<string, int> roundRobinIndex)
     {
         if (candidates.Count == 0)
         {
