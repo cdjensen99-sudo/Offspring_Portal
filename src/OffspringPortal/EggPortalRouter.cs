@@ -6,7 +6,7 @@ namespace OffspringPortal;
 public static class EggPortalRouter
 {
     public static bool TryRoute(
-        TeleportWorld portal,
+        OPTeleportWorld portal,
         ItemDrop egg,
         Dictionary<int, float> cooldowns,
         ref float lastNoDestinationMessageTime)
@@ -117,13 +117,8 @@ public static class EggPortalRouter
         return true;
     }
 
-    private static void PlayPortalActivation(TeleportWorld portal)
+    private static void PlayPortalActivation(OPTeleportWorld portal)
     {
-        if (portal?.m_connected == null)
-        {
-            return;
-        }
-
-        portal.m_connected.Create(portal.transform.position, portal.transform.rotation, portal.transform);
+        portal?.PlayActivationEffect();
     }
 }

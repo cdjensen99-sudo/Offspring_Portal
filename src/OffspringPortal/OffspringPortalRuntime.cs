@@ -24,7 +24,7 @@ public sealed class OffspringPortalRuntime : MonoBehaviour
         }
     }
 
-    public bool TryQueueDistantTeleport(Character juvenile, PortalRecord destination, TeleportWorld sourcePortal)
+    public bool TryQueueDistantTeleport(Character juvenile, PortalRecord destination, OPTeleportWorld sourcePortal)
     {
         ZNetView nview = juvenile?.GetNview();
         if (nview == null || !nview.IsValid())
@@ -43,7 +43,7 @@ public sealed class OffspringPortalRuntime : MonoBehaviour
         return true;
     }
 
-    private IEnumerator DeferredTeleport(Character juvenile, PortalRecord destination, TeleportWorld sourcePortal, ZDOID juvenileId)
+    private IEnumerator DeferredTeleport(Character juvenile, PortalRecord destination, OPTeleportWorld sourcePortal, ZDOID juvenileId)
     {
         float timeout = ModConfig.DistantTeleportTimeoutSec.Value;
         float elapsed = 0f;

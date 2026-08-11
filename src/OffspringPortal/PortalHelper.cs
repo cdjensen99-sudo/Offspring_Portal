@@ -8,7 +8,7 @@ public static class PortalHelper
 {
     private static readonly HashSet<int> PendingInitialization = new HashSet<int>();
 
-    public static bool TryGetPortal(TeleportWorld portal, out ZDOID id, out Vector3 position, out string speciesKey)
+    public static bool TryGetPortal(OPTeleportWorld portal, out ZDOID id, out Vector3 position, out string speciesKey)
     {
         id = ZDOID.None;
         position = Vector3.zero;
@@ -32,25 +32,27 @@ public static class PortalHelper
         return true;
     }
 
-    public static void EnsurePortalInitialized(TeleportWorld portal)
+    public static void EnsurePortalInitialized(OPTeleportWorld portal)
     {
         if (portal == null || !OffspringPortalPrefabs.IsOffspringPortal(portal))
         {
             return;
         }
 
+        OffspringPortalPrefabs.MigrateLegacyPortal(portal.gameObject);
+
         ZNetView nview = portal.GetComponent<ZNetView>();
         ZDO zdo = nview?.GetZDO();
         if (zdo == null)
         {
-            OffspringPortalRuntime.Instance.StartCoroutine(DeferredEnsurePortalInitialized(portal));
+            OffspringPortalRuntime.Instance.StartCoroutine(DeferredEnsurePortalInitialization(portal));
             return;
         }
 
         ApplyPortalInitialization(portal, nview);
     }
 
-    private static IEnumerator DeferredEnsurePortalInitialized(TeleportWorld portal)
+    private static IEnumerator DeferredEnsurePortalInitialization(OPTeleportWorld portal)
     {
         int instanceId = portal.GetInstanceID();
         if (!PendingInitialization.Add(instanceId))
@@ -82,28 +84,16 @@ public static class PortalHelper
         }
     }
 
-    private static void ApplyPortalInitialization(TeleportWorld portal, ZNetView nview)
+    private static void ApplyPortalInitialization(OPTeleportWorld portal, ZNetView nview)
     {
         OffspringPortalPrefabs.EnsureIdentity(portal);
         portal.transform.localScale = Vector3.one * PortalPlacement.PortalScale;
         portal.m_exitDistance = PortalPlacement.ScaledExitDistance;
-
-        if (!portal.enabled)
-        {
-            OffspringPortalInitializer.CompleteTeleportWorldAwake(portal, nview);
-        }
-
         OffspringPortalPrefabs.EnsureRuntimeTriggers(portal);
-        ZDO zdo = nview.GetZDO();
-        if (zdo != null && ZNet.instance.IsServer())
-        {
-            PortalTravelGuard.ClearTravelBindings(zdo);
-        }
-
         SyncRegistryFromPortal(portal);
     }
 
-    public static void SyncRegistryFromPortal(TeleportWorld portal)
+    public static void SyncRegistryFromPortal(OPTeleportWorld portal)
     {
         ZNetView nview = portal?.GetComponent<ZNetView>();
         ZDO zdo = nview?.GetZDO();
@@ -113,7 +103,6 @@ public static class PortalHelper
         }
 
         SyncRegistryFromZdo(zdo);
-        PortalTravelGuard.ClearTravelBindings(zdo);
         DestinationRegistry.RefreshCapWarnings();
     }
 
@@ -132,12 +121,25 @@ public static class PortalHelper
 
     public static void RebuildRegistryFromWorld()
     {
+        MigrateAllLegacyPortals();
         DestinationRegistry.Clear();
         RebuildRegistryFromLoadedPortals();
         RebuildRegistryFromAllPortalZdos();
         BreedableSpeciesRegistry.RefreshFromAllBreeders();
         DestinationRegistry.RefreshCapWarnings();
         LogRegistryState("rebuilt");
+    }
+
+    private static void MigrateAllLegacyPortals()
+    {
+        TeleportWorld[] legacyPortals = Object.FindObjectsByType<TeleportWorld>(FindObjectsSortMode.None);
+        foreach (TeleportWorld legacyPortal in legacyPortals)
+        {
+            if (legacyPortal != null)
+            {
+                OffspringPortalPrefabs.MigrateLegacyPortal(legacyPortal.gameObject);
+            }
+        }
     }
 
     private static void LogRegistryState(string reason)
@@ -180,8 +182,8 @@ public static class PortalHelper
             return;
         }
 
-        TeleportWorld[] portals = Object.FindObjectsByType<TeleportWorld>(FindObjectsSortMode.None);
-        foreach (TeleportWorld portal in portals)
+        OPTeleportWorld[] portals = Object.FindObjectsByType<OPTeleportWorld>(FindObjectsSortMode.None);
+        foreach (OPTeleportWorld portal in portals)
         {
             if (OffspringPortalPrefabs.IsOffspringPortal(portal))
             {

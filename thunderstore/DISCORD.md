@@ -29,7 +29,7 @@ Offspring Portal automates breeding pens in Valheim. Build offspring portals at 
 - **Optional adult routing** — Maturing → None / Farm / Cull
 - **Portal config UI** — Press **E** on a portal
 - **Juvenile follow** — Press **E** on juveniles for Follow / Stay
-- **XPortal compatible** — Offspring portals excluded from player travel lists
+- **Portal network compatible** — Offspring portals excluded from player travel lists
 - **Configurable** — Scan range, mate draw, discovery radius, and more
 
 ---

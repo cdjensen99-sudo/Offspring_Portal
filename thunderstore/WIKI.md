@@ -2,7 +2,7 @@
 
 > **Automate breeding pens in Valheim.** Teleport tamed juveniles and breedable eggs from breeder areas to maturing pens automatically — optionally route dual-purpose eggs to collection pens, draw mates together, and forward grown adults to farm or cull yards.
 
-**Current version:** 0.3.5 · **Author:** HW · **Team:** HW
+**Current version:** 0.4.0 · **Author:** HW · **Team:** HW
 
 ---
 
@@ -272,7 +272,7 @@ Portals **teleport** juveniles when they enter breeder range. Follow helps you *
 **Offspring portals are automation-only — not player travel nodes.**
 
 - Players **cannot** walk through offspring portals.
-- **[XPortal](https://thunderstore.io/c/valheim/p/OdinPlus/XPortal/)** — offspring portals are excluded from travel lists.
+- **Portal travel mods** (XPortal, Z-Portal, map-based portal UIs, etc.) — offspring portals are excluded from travel lists.
 
 ---
 
@@ -385,6 +385,7 @@ Move maturing pens farther from active breeders when possible.
 
 | Version | Highlights |
 |---------|------------|
+| **0.4.0** | Offspring portals excluded from player portal networks globally |
 | **0.3.5** | Removed pregnant glow visual |
 | **0.3.4** | Improved species discovery (single animal, wider radius, per-scan refresh) |
 | **0.3.3** | Breeder mate draw; breeding config section |

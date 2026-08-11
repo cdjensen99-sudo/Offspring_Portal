@@ -5,7 +5,7 @@ namespace OffspringPortal;
 
 public class OffspringPortalScanner : MonoBehaviour
 {
-    private TeleportWorld portal;
+    private OPTeleportWorld portal;
     private readonly Dictionary<int, float> juvenileCooldowns = new Dictionary<int, float>();
     private readonly Dictionary<int, float> adultCooldowns = new Dictionary<int, float>();
     private readonly Dictionary<int, float> eggCooldowns = new Dictionary<int, float>();
@@ -15,7 +15,7 @@ public class OffspringPortalScanner : MonoBehaviour
 
     private void Start()
     {
-        portal = GetComponent<TeleportWorld>();
+        portal = GetComponent<OPTeleportWorld>();
         float juvenileInterval = ModConfig.BreederScanIntervalSec.Value;
         InvokeRepeating(nameof(ScanForJuveniles), juvenileInterval, juvenileInterval);
 

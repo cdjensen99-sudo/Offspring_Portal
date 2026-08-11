@@ -5,7 +5,7 @@ namespace OffspringPortal;
 
 public static class JuvenilePortalRouter
 {
-    public static bool IsBreederPortal(TeleportWorld portal)
+    public static bool IsBreederPortal(OPTeleportWorld portal)
     {
         if (portal == null)
         {
@@ -29,7 +29,7 @@ public static class JuvenilePortalRouter
     }
 
     public static bool TryRoute(
-        TeleportWorld portal,
+        OPTeleportWorld portal,
         Character character,
         Dictionary<int, float> cooldowns,
         ref float lastNoDestinationMessageTime)
@@ -106,13 +106,8 @@ public static class JuvenilePortalRouter
         return true;
     }
 
-    private static void PlayPortalActivation(TeleportWorld portal)
+    private static void PlayPortalActivation(OPTeleportWorld portal)
     {
-        if (portal?.m_connected == null)
-        {
-            return;
-        }
-
-        portal.m_connected.Create(portal.transform.position, portal.transform.rotation, portal.transform);
+        portal?.PlayActivationEffect();
     }
 }

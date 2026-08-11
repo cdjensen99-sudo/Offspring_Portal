@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using HarmonyLib;
-using OffspringPortal.UI;
 using UnityEngine;
 
 namespace OffspringPortal.Patches;
@@ -82,15 +81,6 @@ public static class ZNetSceneRemoveObjectsPatch
     }
 }
 
-[HarmonyPatch(typeof(TeleportWorld), "Awake")]
-public static class TeleportWorldAwakePatch
-{
-    private static void Postfix(TeleportWorld __instance)
-    {
-        PortalHelper.EnsurePortalInitialized(__instance);
-    }
-}
-
 [HarmonyPatch(typeof(Game), "Start")]
 public static class GameStartPatch
 {
@@ -99,8 +89,6 @@ public static class GameStartPatch
         PortalRpc.Register();
         JuvenileFollowRpc.Register();
         PortalHelper.RebuildRegistryFromWorld();
-        PortalTravelGuard.ClearAllOffspringTravelBindings();
-        XPortalCompat.PurgeKnownPortals();
         OffspringPortalRuntime.Instance.StartCoroutine(DelayedRegistryRebuild());
     }
 
@@ -108,7 +96,6 @@ public static class GameStartPatch
     {
         yield return new WaitForSeconds(2f);
         PortalHelper.RebuildRegistryFromWorld();
-        XPortalCompat.PurgeKnownPortals();
     }
 }
 
@@ -119,96 +106,6 @@ public static class PlayerSpawnedPatch
     {
         OffspringPortalPrefabs.EnsurePieceRegistered();
         PortalHelper.RebuildRegistryFromWorld();
-    }
-}
-
-[HarmonyPatch(typeof(TeleportWorld), nameof(TeleportWorld.Interact))]
-[HarmonyPriority(Priority.Last)]
-public static class OffspringPortalInteractPatch
-{
-    private static bool Prefix(TeleportWorld __instance, Humanoid human, bool hold, bool alt, ref bool __result)
-    {
-        if (hold || alt || !OffspringPortalPrefabs.IsOffspringPortal(__instance))
-        {
-            return true;
-        }
-
-        if (!PrivateArea.CheckAccess(__instance.transform.position))
-        {
-            human.Message(MessageHud.MessageType.Center, "$piece_noaccess");
-            __result = true;
-            return false;
-        }
-
-        ZNetView nview = __instance.GetComponent<ZNetView>();
-        ZDO zdo = nview?.GetZDO();
-        if (zdo == null)
-        {
-            return true;
-        }
-
-        string speciesKey = zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty);
-        PortalRole role = PortalRoleCatalog.FromZdo(zdo);
-        string portalName = zdo.GetString(ZdoFields.PortalName, string.Empty);
-        AdultDestination adultDestination = PortalRoleCatalog.GetAdultDestination(zdo);
-        SpeciesConfigPanel.Instance.Open(zdo.m_uid, role, speciesKey, portalName, adultDestination);
-        __result = true;
-        return false;
-    }
-}
-
-[HarmonyPatch(typeof(TextInput), "RequestText")]
-[HarmonyPriority(Priority.Last)]
-public static class TextInputPatch
-{
-    private static bool Prefix(TextReceiver sign)
-    {
-        TeleportWorld portal = sign as TeleportWorld;
-        if (portal == null || !OffspringPortalPrefabs.IsOffspringPortal(portal))
-        {
-            return true;
-        }
-
-        ZNetView nview = portal.GetComponent<ZNetView>();
-        ZDO zdo = nview?.GetZDO();
-        if (zdo == null)
-        {
-            return true;
-        }
-
-        string speciesKey = zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty);
-        PortalRole role = PortalRoleCatalog.FromZdo(zdo);
-        string portalName = zdo.GetString(ZdoFields.PortalName, string.Empty);
-        AdultDestination adultDestination = PortalRoleCatalog.GetAdultDestination(zdo);
-        SpeciesConfigPanel.Instance.Open(zdo.m_uid, role, speciesKey, portalName, adultDestination);
-        return false;
-    }
-}
-
-[HarmonyPatch(typeof(TeleportWorld), nameof(TeleportWorld.GetHoverText))]
-public static class TeleportWorldHoverPatch
-{
-    [HarmonyPostfix]
-    [HarmonyPriority(int.MinValue)]
-    private static void Postfix(TeleportWorld __instance, ref string __result)
-    {
-        OffspringPortalPrefabs.EnsureIdentity(__instance);
-        if (!OffspringPortalPrefabs.IsOffspringPortal(__instance))
-        {
-            return;
-        }
-
-        ZDO zdo = __instance.GetComponent<ZNetView>()?.GetZDO();
-        if (zdo == null)
-        {
-            return;
-        }
-
-        PortalRole role = PortalRoleCatalog.FromZdo(zdo);
-        string speciesKey = zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty);
-        AdultDestination adultDestination = PortalRoleCatalog.GetAdultDestination(zdo);
-        bool capWarning = zdo.GetBool(ZdoFields.CapWarning);
-        __result = PortalDisplayHelper.GetHoverText(zdo, role, speciesKey, adultDestination, capWarning);
     }
 }
 
@@ -227,7 +124,8 @@ public static class WearNTearOnPlacedPatch
             __instance.gameObject.SetActive(true);
         }
 
-        TeleportWorld portal = __instance.GetComponent<TeleportWorld>();
+        OffspringPortalPrefabs.MigrateLegacyPortal(__instance.gameObject);
+        OPTeleportWorld portal = __instance.GetComponent<OPTeleportWorld>();
         if (portal != null)
         {
             PortalHelper.EnsurePortalInitialized(portal);
@@ -235,12 +133,17 @@ public static class WearNTearOnPlacedPatch
     }
 }
 
-[HarmonyPatch(typeof(TeleportWorld), "Teleport")]
-public static class TeleportWorldPlayerTravelPatch
+[HarmonyPatch(typeof(Character), nameof(Character.TeleportTo))]
+public static class CharacterTeleportToPlayerTravelPatch
 {
-    private static bool Prefix(TeleportWorld __instance, Player player)
+    private static bool Prefix(Character __instance, Vector3 pos, Quaternion rot, bool distantTeleport)
     {
-        if (!PortalTravelGuard.BlocksPlayerTravel(__instance, player, out string message))
+        if (__instance is not Player player)
+        {
+            return true;
+        }
+
+        if (!PortalTravelGuard.BlocksPlayerTeleportTo(pos, player, out string message))
         {
             return true;
         }
@@ -254,41 +157,12 @@ public static class TeleportWorldPlayerTravelPatch
     }
 }
 
-[HarmonyPatch(typeof(TeleportWorld), "RPC_SetConnected")]
-public static class TeleportWorldSetConnectedPatch
-{
-    private static bool Prefix(TeleportWorld __instance)
-    {
-        return !OffspringPortalPrefabs.IsOffspringPortal(__instance);
-    }
-}
-
-[HarmonyPatch(typeof(ZDOMan), "GetPortals")]
-public static class ZdomanGetPortalsPatch
-{
-    private static void Postfix(ref System.Collections.Generic.List<ZDO> __result)
-    {
-        if (__result == null || __result.Count == 0)
-        {
-            return;
-        }
-
-        for (int i = __result.Count - 1; i >= 0; i--)
-        {
-            if (PortalTravelGuard.IsOffspringPortalZdo(__result[i]))
-            {
-                __result.RemoveAt(i);
-            }
-        }
-    }
-}
-
 [HarmonyPatch(typeof(WearNTear), "Destroy")]
 public static class WearNTearDestroyPatch
 {
     private static void Prefix(WearNTear __instance)
     {
-        TeleportWorld portal = __instance.GetComponent<TeleportWorld>();
+        OPTeleportWorld portal = __instance.GetComponent<OPTeleportWorld>();
         if (portal == null || !OffspringPortalPrefabs.IsOffspringPortal(portal))
         {
             return;

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace OffspringPortal;
@@ -7,8 +8,7 @@ public static class PortalTravelGuard
     public const string PlayerTravelBlockedMessage =
         "Offspring portals route juveniles only. Use a standard portal to travel.";
 
-    private const string XPortalTargetField = "XPortal_TargetId";
-    private const string XPortalPreviousField = "XPortal_PreviousId";
+    private const float PlayerTeleportBlockRadius = 4f;
 
     public static bool IsOffspringPortalZdo(ZDO zdo)
     {
@@ -25,100 +25,94 @@ public static class PortalTravelGuard
         return !string.IsNullOrEmpty(zdo.GetString(ZdoFields.PortalRole, string.Empty));
     }
 
-    public static bool TryGetConnectedPortal(TeleportWorld portal, out TeleportWorld connected)
-    {
-        connected = null;
-        if (portal == null)
-        {
-            return false;
-        }
-
-        ZDO zdo = portal.GetComponent<ZNetView>()?.GetZDO();
-        if (zdo == null)
-        {
-            return false;
-        }
-
-        ZDOID connectionId = zdo.GetConnectionZDOID(ZDOExtraData.ConnectionType.Portal);
-        if (connectionId == ZDOID.None)
-        {
-            return false;
-        }
-
-        GameObject instance = ZNetScene.instance?.FindInstance(connectionId);
-        connected = instance != null ? instance.GetComponent<TeleportWorld>() : null;
-        return connected != null;
-    }
-
-    public static bool BlocksPlayerTravel(TeleportWorld source, Player player, out string message)
+    public static bool BlocksPlayerTeleportTo(Vector3 position, Player player, out string message)
     {
         message = null;
-        if (source == null || player == null)
+        if (player == null || !IsNearOffspringPortal(position))
         {
             return false;
         }
 
-        if (OffspringPortalPrefabs.IsOffspringPortal(source))
-        {
-            message = PlayerTravelBlockedMessage;
-            return true;
-        }
-
-        if (TryGetConnectedPortal(source, out TeleportWorld destination)
-            && OffspringPortalPrefabs.IsOffspringPortal(destination))
-        {
-            message = PlayerTravelBlockedMessage;
-            return true;
-        }
-
-        return false;
+        message = PlayerTravelBlockedMessage;
+        return true;
     }
 
-    public static void ClearTravelBindings(ZDO zdo)
+    public static bool IsNearOffspringPortal(Vector3 position)
     {
-        if (zdo == null)
-        {
-            return;
-        }
+        float radiusSq = PlayerTeleportBlockRadius * PlayerTeleportBlockRadius;
 
-        zdo.UpdateConnection(ZDOExtraData.ConnectionType.Portal, ZDOID.None);
-        zdo.Set(XPortalTargetField, ZDOID.None);
-        zdo.Set(XPortalPreviousField, ZDOID.None);
-    }
-
-    public static void ClearTravelBindings(TeleportWorld portal)
-    {
-        if (portal == null || !ZNet.instance.IsServer())
-        {
-            return;
-        }
-
-        ZNetView nview = portal.GetComponent<ZNetView>();
-        ZDO zdo = nview?.GetZDO();
-        if (zdo == null || !nview.IsOwner())
-        {
-            return;
-        }
-
-        ClearTravelBindings(zdo);
-    }
-
-    public static void ClearAllOffspringTravelBindings()
-    {
-        if (!ZNet.instance.IsServer())
-        {
-            return;
-        }
-
-        TeleportWorld[] portals = Object.FindObjectsByType<TeleportWorld>(FindObjectsSortMode.None);
-        foreach (TeleportWorld portal in portals)
+        OPTeleportWorld[] loadedPortals = Object.FindObjectsByType<OPTeleportWorld>(FindObjectsSortMode.None);
+        foreach (OPTeleportWorld portal in loadedPortals)
         {
             if (!OffspringPortalPrefabs.IsOffspringPortal(portal))
             {
                 continue;
             }
 
-            ClearTravelBindings(portal);
+            if (IsNearPortalPosition(position, portal, radiusSq))
+            {
+                return true;
+            }
         }
+
+        if (ZDOMan.instance == null)
+        {
+            return false;
+        }
+
+        List<ZDO> portalZdos = new List<ZDO>();
+        int index = 0;
+        while (!ZDOMan.instance.GetAllZDOsWithPrefabIterative(PrefabNames.OffspringPortal, portalZdos, ref index))
+        {
+        }
+
+        foreach (ZDO zdo in portalZdos)
+        {
+            if (IsNearZdoPortalPosition(position, zdo, radiusSq))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsNearPortalPosition(Vector3 position, OPTeleportWorld portal, float radiusSq)
+    {
+        if (portal == null)
+        {
+            return false;
+        }
+
+        if ((portal.transform.position - position).sqrMagnitude <= radiusSq)
+        {
+            return true;
+        }
+
+        ZNetView nview = portal.GetComponent<ZNetView>();
+        ZDOID portalId = nview?.GetZDO()?.m_uid ?? ZDOID.None;
+        if (portalId == ZDOID.None)
+        {
+            return false;
+        }
+
+        Vector3 exitPosition = PortalPlacement.GetExitPosition(portalId, portal);
+        return (exitPosition - position).sqrMagnitude <= radiusSq;
+    }
+
+    private static bool IsNearZdoPortalPosition(Vector3 position, ZDO zdo, float radiusSq)
+    {
+        if (zdo == null)
+        {
+            return false;
+        }
+
+        if ((zdo.GetPosition() - position).sqrMagnitude <= radiusSq)
+        {
+            return true;
+        }
+
+        Vector3 exitPosition = PortalPlacement.GetExitPosition(zdo.m_uid);
+        return (exitPosition - position).sqrMagnitude <= radiusSq;
     }
 }

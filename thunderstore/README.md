@@ -6,9 +6,9 @@
 
 Build a portal, name it, configure it once, and let the mod handle the logistics. **Species lists are built automatically** from tamed adults near your breeder portals — no need to manually register mod creatures.
 
-**Offspring portals are for animal automation only** — players cannot travel through them. Compatible with XPortal (offspring portals are excluded from XPortal's travel list).
+**Offspring portals are for animal automation only** — players cannot travel through them. They are excluded from portal travel mod lists and map-based portal UIs.
 
-**Current version:** 0.3.5
+**Current version:** 0.4.0
 
 ---
 
@@ -41,7 +41,7 @@ When reporting a problem, include your mod version, single-player or multiplayer
 - **Breeding cap warning** — Hover warning when a maturing pen sits inside vanilla breeding cap radius
 - **Distant pen support** — Teleports wait for unloaded zones before giving up
 - **Multiplayer support** — Routing runs on host; all players need the mod installed
-- **XPortal compatible** — Offspring portals excluded from XPortal's travel list
+- **Portal network compatible** — Offspring portals are excluded from player portal travel lists (XPortal, map portals, and similar mods)
 - **Players cannot travel** — Offspring portals are for animals only, not player teleportation
 - **Configurable** — Scan range, mate draw, discovery radius, intervals, cooldowns, and more via `offspringportal.mod.cfg`
 

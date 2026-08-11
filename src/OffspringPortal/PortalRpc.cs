@@ -101,12 +101,11 @@ public static class PortalRpc
         zdo.Set(ZdoFields.PortalName, name);
         zdo.Set(ZdoFields.AdultDestination, PortalRoleCatalog.ToStorageValue(resolvedDestination));
         zdo.Set(ZdoFields.ForwardAdults, resolvedDestination == AdultDestination.Cull);
-        PortalTravelGuard.ClearTravelBindings(zdo);
         DestinationRegistry.RegisterOrUpdate(portalId, zdo.GetPosition(), role, resolvedSpeciesKey, resolvedDestination);
         BreedableSpeciesRegistry.RefreshFromAllBreeders();
         DestinationRegistry.RefreshCapWarnings();
 
-        TeleportWorld portal = FindPortal(portalId);
+        OPTeleportWorld portal = FindPortal(portalId);
         if (portal != null && Player.m_localPlayer != null)
         {
             string portalName = string.IsNullOrEmpty(name) ? PortalDisplayHelper.UnnamedDisplay : name;
@@ -117,7 +116,7 @@ public static class PortalRpc
         }
     }
 
-    private static TeleportWorld FindPortal(ZDOID portalId)
+    private static OPTeleportWorld FindPortal(ZDOID portalId)
     {
         ZDO zdo = ZDOMan.instance.GetZDO(portalId);
         if (zdo == null)
@@ -126,6 +125,6 @@ public static class PortalRpc
         }
 
         ZNetView nview = ZNetScene.instance.FindInstance(zdo);
-        return nview != null ? nview.GetComponent<TeleportWorld>() : null;
+        return nview != null ? nview.GetComponent<OPTeleportWorld>() : null;
     }
 }

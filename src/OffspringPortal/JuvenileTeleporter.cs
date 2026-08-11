@@ -12,7 +12,7 @@ public static class JuvenileTeleporter
 
 {
 
-    public static bool TryTeleport(Character juvenile, PortalRecord destination, TeleportWorld sourcePortal)
+    public static bool TryTeleport(Character juvenile, PortalRecord destination, OPTeleportWorld sourcePortal)
 
     {
 
@@ -72,7 +72,7 @@ public static class JuvenileTeleporter
 
         PortalRecord destination,
 
-        TeleportWorld sourcePortal,
+        OPTeleportWorld sourcePortal,
 
         bool allowStoredHeight = false)
 
@@ -179,7 +179,7 @@ public static class JuvenileTeleporter
 
 
 
-    public static Vector3 ResolveDestinationPosition(PortalRecord destination, TeleportWorld sourcePortal)
+    public static Vector3 ResolveDestinationPosition(PortalRecord destination, OPTeleportWorld sourcePortal)
 
     {
 
@@ -189,7 +189,7 @@ public static class JuvenileTeleporter
 
 
 
-    public static Quaternion ResolveDestinationRotation(PortalRecord destination, TeleportWorld sourcePortal)
+    public static Quaternion ResolveDestinationRotation(PortalRecord destination, OPTeleportWorld sourcePortal)
 
     {
 

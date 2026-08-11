@@ -5,7 +5,7 @@ namespace OffspringPortal;
 
 public static class MateDrawScanner
 {
-    public static void ScanPortal(TeleportWorld portal, Vector3 center)
+    public static void ScanPortal(OPTeleportWorld portal, Vector3 center)
     {
         if (!ModConfig.EnableMateDraw.Value
             || portal == null

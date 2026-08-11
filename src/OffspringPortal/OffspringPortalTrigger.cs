@@ -5,13 +5,13 @@ namespace OffspringPortal;
 
 public class OffspringPortalTrigger : MonoBehaviour
 {
-    private TeleportWorld portal;
+    private OPTeleportWorld portal;
     private readonly Dictionary<int, float> cooldowns = new Dictionary<int, float>();
     private float lastNoDestinationMessageTime;
 
     private void Awake()
     {
-        portal = GetComponentInParent<TeleportWorld>();
+        portal = GetComponentInParent<OPTeleportWorld>();
     }
 
     private void OnTriggerEnter(Collider other)

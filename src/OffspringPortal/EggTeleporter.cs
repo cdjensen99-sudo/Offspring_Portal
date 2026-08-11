@@ -4,7 +4,7 @@ namespace OffspringPortal;
 
 public static class EggTeleporter
 {
-    public static bool TryTeleport(ItemDrop egg, PortalRecord destination, TeleportWorld sourcePortal)
+    public static bool TryTeleport(ItemDrop egg, PortalRecord destination, OPTeleportWorld sourcePortal)
     {
         if (egg == null || destination == null || sourcePortal == null || !ZNet.instance.IsServer())
         {

@@ -7,7 +7,7 @@ public static class PortalPlacement
     public const float PortalScale = 0.5f;
     public const float ScaledExitDistance = 1f;
 
-    public static Vector3 GetExitPosition(ZDOID portalId, TeleportWorld fallbackPortal = null)
+    public static Vector3 GetExitPosition(ZDOID portalId, OPTeleportWorld fallbackPortal = null)
     {
         Vector3 center = Vector3.zero;
         Quaternion rotation = Quaternion.identity;
@@ -27,7 +27,7 @@ public static class PortalPlacement
         }
 
         GameObject instance = ZNetScene.instance?.FindInstance(portalId);
-        TeleportWorld portal = instance != null ? instance.GetComponent<TeleportWorld>() : null;
+        OPTeleportWorld portal = instance != null ? instance.GetComponent<OPTeleportWorld>() : null;
         if (portal != null)
         {
             center = portal.transform.position;
@@ -38,7 +38,7 @@ public static class PortalPlacement
         return center + rotation * Vector3.forward * exitDistance;
     }
 
-    public static Quaternion GetExitRotation(ZDOID portalId, TeleportWorld fallbackPortal = null)
+    public static Quaternion GetExitRotation(ZDOID portalId, OPTeleportWorld fallbackPortal = null)
     {
         ZDO zdo = ZDOMan.instance?.GetZDO(portalId);
         if (zdo != null)
@@ -47,7 +47,7 @@ public static class PortalPlacement
         }
 
         GameObject instance = ZNetScene.instance?.FindInstance(portalId);
-        TeleportWorld portal = instance != null ? instance.GetComponent<TeleportWorld>() : null;
+        OPTeleportWorld portal = instance != null ? instance.GetComponent<OPTeleportWorld>() : null;
         if (portal != null)
         {
             return portal.transform.rotation;

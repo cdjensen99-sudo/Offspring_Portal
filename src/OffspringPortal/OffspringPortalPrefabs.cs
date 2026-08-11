@@ -1,51 +1,8 @@
 using System;
-using HarmonyLib;
 using Jotunn.Managers;
 using UnityEngine;
 
 namespace OffspringPortal;
-
-public class OffspringPortalMarker : MonoBehaviour
-{
-    private TeleportWorld teleportWorld;
-
-    private void Awake()
-    {
-        teleportWorld = GetComponent<TeleportWorld>();
-    }
-
-    private void Start()
-    {
-        if (teleportWorld != null)
-        {
-            PortalHelper.EnsurePortalInitialized(teleportWorld);
-        }
-    }
-}
-
-internal static class OffspringPortalInitializer
-{
-    internal static void CompleteTeleportWorldAwake(TeleportWorld portal, ZNetView nview)
-    {
-        if (portal.enabled)
-        {
-            return;
-        }
-
-        Traverse.Create(portal).Field<ZNetView>("m_nview").Value = nview;
-        Traverse.Create(portal).Field<bool>("m_hadTarget").Value =
-            (bool)AccessTools.Method(typeof(TeleportWorld), "HaveTarget").Invoke(portal, null);
-
-        nview.Register<string, string>("RPC_SetTag", (sender, tag, target) =>
-            AccessTools.Method(typeof(TeleportWorld), "RPC_SetTag").Invoke(portal, new object[] { sender, tag, target }));
-
-        nview.Register<ZDOID>("RPC_SetConnected", (sender, targetId) =>
-            AccessTools.Method(typeof(TeleportWorld), "RPC_SetConnected").Invoke(portal, new object[] { sender, targetId }));
-
-        portal.enabled = true;
-        portal.InvokeRepeating("UpdatePortal", 0.5f, 0.5f);
-    }
-}
 
 public static class OffspringPortalPrefabs
 {
@@ -83,7 +40,8 @@ public static class OffspringPortalPrefabs
         }
 
         ConfigureClone(clone);
-        EnsureRuntimeTriggers(clone.GetComponent<TeleportWorld>());
+        OPTeleportWorld portal = ConvertFromVanillaPortal(clone);
+        EnsureRuntimeTriggers(portal);
 
         PrefabManager.Instance.AddPrefab(clone);
         Prefab = clone;
@@ -136,19 +94,6 @@ public static class OffspringPortalPrefabs
     {
         clone.transform.localScale = Vector3.one * PortalPlacement.PortalScale;
 
-        TeleportWorld teleportWorld = clone.GetComponent<TeleportWorld>();
-        if (teleportWorld != null)
-        {
-            teleportWorld.m_exitDistance = PortalPlacement.ScaledExitDistance;
-        }
-
-        EnsureRuntimeTriggers(teleportWorld);
-
-        if (clone.GetComponent<OffspringPortalMarker>() == null)
-        {
-            clone.AddComponent<OffspringPortalMarker>();
-        }
-
         Piece piece = clone.GetComponent<Piece>();
         if (piece != null)
         {
@@ -157,41 +102,76 @@ public static class OffspringPortalPrefabs
         }
     }
 
-    public static void EnsureRuntimeTriggers(TeleportWorld teleportWorld)
+    internal static OPTeleportWorld ConvertFromVanillaPortal(GameObject gameObject)
     {
-        if (teleportWorld == null)
+        Transform proximityRoot = null;
+        float exitDistance = PortalPlacement.ScaledExitDistance;
+        EffectList connectedVfx = null;
+
+        TeleportWorld legacyPortal = gameObject.GetComponent<TeleportWorld>();
+        if (legacyPortal != null)
+        {
+            proximityRoot = legacyPortal.m_proximityRoot;
+            exitDistance = legacyPortal.m_exitDistance;
+            connectedVfx = legacyPortal.m_connected;
+            DestroyPortalComponent(legacyPortal);
+        }
+
+        foreach (TeleportWorldTrigger legacyTrigger in gameObject.GetComponentsInChildren<TeleportWorldTrigger>(true))
+        {
+            DestroyPortalComponent(legacyTrigger);
+        }
+
+        OPTeleportWorld portal = gameObject.GetComponent<OPTeleportWorld>();
+        if (portal == null)
+        {
+            portal = gameObject.AddComponent<OPTeleportWorld>();
+        }
+
+        portal.Initialize(proximityRoot, exitDistance, connectedVfx);
+        return portal;
+    }
+
+    public static void MigrateLegacyPortal(GameObject gameObject)
+    {
+        if (gameObject == null || gameObject.GetComponent<OPTeleportWorld>() != null)
         {
             return;
         }
 
-        foreach (TeleportWorldTrigger vanillaTrigger in teleportWorld.GetComponentsInChildren<TeleportWorldTrigger>(true))
-        {
-            GameObject triggerObject = vanillaTrigger.gameObject;
-            vanillaTrigger.enabled = false;
-            if (triggerObject.GetComponent<OffspringPortalTrigger>() == null)
-            {
-                triggerObject.AddComponent<OffspringPortalTrigger>();
-            }
-        }
-
-        if (teleportWorld.m_proximityRoot == null)
+        if (!IsOffspringPortal(gameObject))
         {
             return;
         }
 
-        foreach (Collider collider in teleportWorld.m_proximityRoot.GetComponentsInChildren<Collider>(true))
-        {
-            if (!collider.isTrigger || collider.GetComponent<OffspringPortalTrigger>() != null)
-            {
-                continue;
-            }
+        OPTeleportWorld portal = ConvertFromVanillaPortal(gameObject);
+        EnsureRuntimeTriggers(portal);
+        PortalHelper.EnsurePortalInitialized(portal);
+    }
 
-            collider.gameObject.AddComponent<OffspringPortalTrigger>();
+    public static void EnsureRuntimeTriggers(OPTeleportWorld portal)
+    {
+        if (portal == null)
+        {
+            return;
         }
 
-        if (teleportWorld.GetComponent<OffspringPortalScanner>() == null)
+        if (portal.m_proximityRoot != null)
         {
-            teleportWorld.gameObject.AddComponent<OffspringPortalScanner>();
+            foreach (Collider collider in portal.m_proximityRoot.GetComponentsInChildren<Collider>(true))
+            {
+                if (!collider.isTrigger || collider.GetComponent<OffspringPortalTrigger>() != null)
+                {
+                    continue;
+                }
+
+                collider.gameObject.AddComponent<OffspringPortalTrigger>();
+            }
+        }
+
+        if (portal.GetComponent<OffspringPortalScanner>() == null)
+        {
+            portal.gameObject.AddComponent<OffspringPortalScanner>();
         }
     }
 
@@ -207,36 +187,9 @@ public static class OffspringPortalPrefabs
         };
     }
 
-    public static bool IsOffspringPortal(TeleportWorld portal)
+    public static bool IsOffspringPortal(OPTeleportWorld portal)
     {
-        if (portal == null)
-        {
-            return false;
-        }
-
-        if (portal.GetComponent<OffspringPortalMarker>() != null)
-        {
-            return true;
-        }
-
-        if (IsOffspringPiece(portal.gameObject))
-        {
-            return true;
-        }
-
-        ZNetView nview = portal.GetComponent<ZNetView>();
-        if (nview == null || nview.GetZDO() == null)
-        {
-            return false;
-        }
-
-        ZDO zdo = nview.GetZDO();
-        if (zdo.GetPrefab() == PrefabNames.OffspringPortal.GetStableHashCode())
-        {
-            return true;
-        }
-
-        return !string.IsNullOrEmpty(zdo.GetString(ZdoFields.PortalRole, string.Empty));
+        return portal != null && IsOffspringPortal(portal.gameObject);
     }
 
     public static bool IsOffspringPortal(GameObject gameObject)
@@ -246,7 +199,7 @@ public static class OffspringPortalPrefabs
             return false;
         }
 
-        if (gameObject.GetComponent<OffspringPortalMarker>() != null)
+        if (gameObject.GetComponent<OPTeleportWorld>() != null)
         {
             return true;
         }
@@ -256,19 +209,31 @@ public static class OffspringPortalPrefabs
             return true;
         }
 
-        return IsOffspringPortal(gameObject.GetComponent<TeleportWorld>());
+        ZNetView nview = gameObject.GetComponent<ZNetView>();
+        ZDO zdo = nview?.GetZDO();
+        if (zdo == null)
+        {
+            return false;
+        }
+
+        if (zdo.GetPrefab() == PrefabNames.OffspringPortal.GetStableHashCode())
+        {
+            return true;
+        }
+
+        return !string.IsNullOrEmpty(zdo.GetString(ZdoFields.PortalRole, string.Empty));
     }
 
-    public static void EnsureIdentity(TeleportWorld portal)
+    public static void EnsureIdentity(OPTeleportWorld portal)
     {
         if (portal == null || !IsOffspringPiece(portal.gameObject))
         {
             return;
         }
 
-        if (portal.GetComponent<OffspringPortalMarker>() == null)
+        if (portal.GetComponent<OPTeleportWorld>() == null)
         {
-            portal.gameObject.AddComponent<OffspringPortalMarker>();
+            portal.gameObject.AddComponent<OPTeleportWorld>();
         }
     }
 
@@ -276,5 +241,22 @@ public static class OffspringPortalPrefabs
     {
         Piece piece = gameObject.GetComponent<Piece>();
         return piece != null && piece.m_name == "$piece_offspring_portal";
+    }
+
+    private static void DestroyPortalComponent(Component component)
+    {
+        if (component == null)
+        {
+            return;
+        }
+
+        if (Application.isPlaying)
+        {
+            UnityEngine.Object.Destroy(component);
+        }
+        else
+        {
+            UnityEngine.Object.DestroyImmediate(component);
+        }
     }
 }
