@@ -98,6 +98,12 @@ public sealed class SpeciesConfigPanel
             return;
         }
 
+        if (GUIManager.Instance == null)
+        {
+            OffspringPortalPlugin.Log.LogError("Jotunn GUIManager is not available — config UI cannot open.");
+            return;
+        }
+
         GameObject guiRoot = GameObject.Find("_GameMain/LoadingGUI/CustomGUIFront");
         if (guiRoot == null)
         {
@@ -138,7 +144,7 @@ public sealed class SpeciesConfigPanel
             250f,
             50f,
             false);
-        header.GetComponent<Text>().alignment = TextAnchor.UpperCenter;
+        AlignTextUpperCenter(header);
         header.GetComponent<RectTransform>().pivot = new Vector2(0.5f, 1f);
 
         CreateLabel("Name", NameRowTop, out _);
@@ -154,6 +160,12 @@ public sealed class SpeciesConfigPanel
             RowHeight);
         nameInputObject.GetComponent<RectTransform>().pivot = new Vector2(0f, 1f);
         nameInputField = nameInputObject.GetComponent<InputField>();
+        if (nameInputField == null)
+        {
+            OffspringPortalPlugin.Log.LogError("Config panel name InputField missing — Jotunn UI may have changed.");
+            return;
+        }
+
         nameInputField.characterLimit = PortalDisplayHelper.MaxNameLength;
 
         CreateLabel("Type", TypeRowTop, out _);
@@ -198,6 +210,12 @@ public sealed class SpeciesConfigPanel
         destinationDropdown.onValueChanged.AddListener(new UnityAction<int>(OnDestinationChanged));
         ApplyDropdownStyle(destinationDropdown);
 
+        if (typeDropdown == null || speciesDropdown == null || destinationDropdown == null)
+        {
+            OffspringPortalPlugin.Log.LogError("Config panel dropdown missing — verify Jotunn GUIManager on Valheim 1.0.");
+            return;
+        }
+
         GameObject okButtonObject = GUIManager.Instance.CreateButton(
             Localization.instance.Localize("$menu_ok"),
             mainPanel.transform,
@@ -222,6 +240,21 @@ public sealed class SpeciesConfigPanel
 
         mainPanel.SetActive(false);
         initialized = true;
+        OffspringPortalPlugin.Log.LogInfo("Offspring Portal config UI initialized (Jotunn GUIManager / Unity UI).");
+    }
+
+    private static void AlignTextUpperCenter(GameObject textObject)
+    {
+        if (textObject == null)
+        {
+            return;
+        }
+
+        Text legacyText = textObject.GetComponent<Text>();
+        if (legacyText != null)
+        {
+            legacyText.alignment = TextAnchor.UpperCenter;
+        }
     }
 
     private void CreateLabel(string text, float rowTop, out GameObject labelObject)
@@ -242,8 +275,11 @@ public sealed class SpeciesConfigPanel
             false);
         labelObject.GetComponent<RectTransform>().pivot = new Vector2(0f, 1f);
         Text labelText = labelObject.GetComponent<Text>();
-        labelText.alignment = TextAnchor.UpperLeft;
-        labelText.horizontalOverflow = HorizontalWrapMode.Overflow;
+        if (labelText != null)
+        {
+            labelText.alignment = TextAnchor.UpperLeft;
+            labelText.horizontalOverflow = HorizontalWrapMode.Overflow;
+        }
     }
 
     private static void ApplyDropdownStyle(Dropdown dropdown)

@@ -4,6 +4,8 @@ namespace OffspringPortal;
 
 public static class SpeciesDiscovery
 {
+    // Valheim 1.0 seals are ambient/wild — no Procreation/Tameable breeding loop. Not a portal target.
+
     public static bool TryDiscoverFromCharacter(Character character, out BreedableSpeciesInfo info)
     {
         info = null;
@@ -78,30 +80,59 @@ public static class SpeciesDiscovery
         }
 
         EggGrow eggGrow = egg.GetComponent<EggGrow>();
-        if (eggGrow == null || eggGrow.m_grownPrefab == null)
+        if (eggGrow == null)
         {
             return false;
         }
 
-        Character hatchling = eggGrow.m_grownPrefab.GetComponent<Character>();
+        if (TryBuildEggSpeciesInfoFromGrowChain(egg, eggGrow, out info))
+        {
+            return true;
+        }
+
+        return BreedableSpeciesRegistry.TryGetByEggPrefab(egg.name, out info);
+    }
+
+    internal static bool TryBuildEggSpeciesInfoFromGrowChain(
+        ItemDrop egg,
+        EggGrow eggGrow,
+        out BreedableSpeciesInfo info)
+    {
+        info = null;
+        if (egg == null || eggGrow == null)
+        {
+            return false;
+        }
+
+        GameObject grownPrefab = ResolvePrefab(eggGrow.m_grownPrefab);
+        if (grownPrefab == null)
+        {
+            return false;
+        }
+
+        Character hatchling = grownPrefab.GetComponent<Character>();
+        if (hatchling == null)
+        {
+            hatchling = grownPrefab.GetComponentInChildren<Character>(true);
+        }
+
         if (hatchling == null)
         {
             return false;
         }
 
-        Growup growup = hatchling.GetComponent<Growup>();
-        if (growup == null || growup.m_grownPrefab == null)
-        {
-            return false;
-        }
-
-        string adultKey = ResolveAdultSpeciesKeyFromPrefab(growup.m_grownPrefab.name);
+        string adultKey = ResolveEggAdultKey(hatchling);
         if (string.IsNullOrEmpty(adultKey))
         {
             return false;
         }
 
         bool dualPurpose = EggRecipeHelper.IsUsedInRecipe(egg);
+        if (!dualPurpose && BreedableSpeciesRegistry.TryGet(adultKey, out BreedableSpeciesInfo registered))
+        {
+            dualPurpose = registered.IsDualPurposeEgg;
+        }
+
         info = new BreedableSpeciesInfo
         {
             Key = adultKey,
@@ -114,6 +145,36 @@ public static class SpeciesDiscovery
             HatchlingPrefabName = SpeciesKey.Normalize(hatchling.name)
         };
         return true;
+    }
+
+    private static string ResolveEggAdultKey(Character hatchling)
+    {
+        if (hatchling == null)
+        {
+            return string.Empty;
+        }
+
+        Growup growup = hatchling.GetComponent<Growup>();
+        if (growup != null)
+        {
+            string fromGrowup = GetAdultKeyFromGrowup(growup);
+            if (!string.IsNullOrEmpty(fromGrowup))
+            {
+                return fromGrowup;
+            }
+
+            GameObject adultPrefab = ResolvePrefab(growup.m_grownPrefab);
+            if (adultPrefab != null)
+            {
+                string fromAdultPrefab = ResolveAdultSpeciesKeyFromPrefab(adultPrefab.name);
+                if (!string.IsNullOrEmpty(fromAdultPrefab))
+                {
+                    return fromAdultPrefab;
+                }
+            }
+        }
+
+        return GetAdultSpeciesKey(hatchling);
     }
 
     public static string GetSpeciesKey(Character character)
@@ -216,39 +277,19 @@ public static class SpeciesDiscovery
     private static bool TryDiscoverEggLayer(GameObject eggPrefab, out BreedableSpeciesInfo info)
     {
         info = null;
-        EggGrow eggGrow = eggPrefab.GetComponent<EggGrow>();
-        if (eggGrow == null || eggGrow.m_grownPrefab == null)
-        {
-            return false;
-        }
-
-        Character hatchling = eggGrow.m_grownPrefab.GetComponent<Character>();
-        Growup growup = hatchling?.GetComponent<Growup>();
-        if (growup == null || growup.m_grownPrefab == null)
-        {
-            return false;
-        }
-
-        string adultKey = ResolveAdultSpeciesKeyFromPrefab(growup.m_grownPrefab.name);
-        if (string.IsNullOrEmpty(adultKey))
-        {
-            return false;
-        }
-
         ItemDrop itemDrop = eggPrefab.GetComponent<ItemDrop>();
-        bool dualPurpose = itemDrop != null && EggRecipeHelper.IsUsedInRecipe(itemDrop);
-
-        info = new BreedableSpeciesInfo
+        EggGrow eggGrow = eggPrefab.GetComponent<EggGrow>();
+        if (itemDrop == null || eggGrow == null)
         {
-            Key = adultKey,
-            DisplayName = SpeciesKey.GetDisplayName(adultKey),
-            IsEggLayer = true,
-            IsDualPurposeEgg = dualPurpose,
-            EggCollectorKey = dualPurpose ? SpeciesKey.BuildEggCollectorKey(adultKey) : string.Empty,
-            EggPrefabName = SpeciesKey.Normalize(eggPrefab.name),
-            AdultPrefabName = adultKey,
-            HatchlingPrefabName = SpeciesKey.Normalize(hatchling.name)
-        };
+            return false;
+        }
+
+        if (!TryBuildEggSpeciesInfoFromGrowChain(itemDrop, eggGrow, out info))
+        {
+            return false;
+        }
+
+        info.EggPrefabName = SpeciesKey.Normalize(eggPrefab.name);
         return true;
     }
 

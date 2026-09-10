@@ -5,11 +5,14 @@ namespace OffspringPortal;
 
 /// <summary>
 /// Automation-only portal piece. Not a TeleportWorld — invisible to travel-mod discovery.
+/// Valheim 1.0 Hoverable requires GetHoverOffset(); UseHoverMarker() is not part of the interface.
 /// </summary>
 public sealed class OPTeleportWorld : MonoBehaviour, Hoverable, Interactable
 {
     public Transform m_proximityRoot;
     public float m_exitDistance = PortalPlacement.ScaledExitDistance;
+    /// <summary>Copied from vanilla portal_wood when cloned; 0f is fine for custom pieces.</summary>
+    public float m_hoverOffset;
     public EffectList m_connected;
 
     private ZNetView nview;
@@ -25,11 +28,12 @@ public sealed class OPTeleportWorld : MonoBehaviour, Hoverable, Interactable
         PortalHelper.EnsurePortalInitialized(this);
     }
 
-    internal void Initialize(Transform proximityRoot, float exitDistance, EffectList connectedVfx)
+    internal void Initialize(Transform proximityRoot, float exitDistance, EffectList connectedVfx, float hoverOffset)
     {
         m_proximityRoot = proximityRoot;
         m_exitDistance = exitDistance;
         m_connected = connectedVfx;
+        m_hoverOffset = hoverOffset;
     }
 
     public Vector3 GetExitPosition()
@@ -74,6 +78,11 @@ public sealed class OPTeleportWorld : MonoBehaviour, Hoverable, Interactable
         return string.IsNullOrEmpty(portalName) ? PortalDisplayHelper.UnnamedDisplay : portalName;
     }
 
+    public float GetHoverOffset()
+    {
+        return m_hoverOffset;
+    }
+
     public bool Interact(Humanoid human, bool hold, bool alt)
     {
         if (hold || alt)
@@ -104,10 +113,5 @@ public sealed class OPTeleportWorld : MonoBehaviour, Hoverable, Interactable
     public bool UseItem(Humanoid user, ItemDrop.ItemData item)
     {
         return false;
-    }
-
-    public bool UseHoverMarker()
-    {
-        return true;
     }
 }

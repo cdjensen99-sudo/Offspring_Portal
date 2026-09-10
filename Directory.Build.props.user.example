@@ -1,0 +1,10 @@
+<!--
+  Copy to Directory.Build.props.user (gitignored) to override paths on another machine.
+  Example for a different Gale profile or Steam install.
+-->
+<Project>
+  <PropertyGroup>
+    <ValheimPath>D:\SteamLibrary\steamapps\common\Valheim</ValheimPath>
+    <GaleProfilePath>C:\Users\YOU\AppData\Roaming\com.kesomannen.gale\valheim\profiles\Testing</GaleProfilePath>
+  </PropertyGroup>
+</Project>

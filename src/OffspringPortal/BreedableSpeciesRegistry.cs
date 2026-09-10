@@ -51,6 +51,32 @@ public static class BreedableSpeciesRegistry
         return false;
     }
 
+    public static bool TryGetByEggPrefab(string eggPrefabName, out BreedableSpeciesInfo info)
+    {
+        info = null;
+        string normalized = SpeciesKey.Normalize(eggPrefabName);
+        if (string.IsNullOrEmpty(normalized))
+        {
+            return false;
+        }
+
+        foreach (BreedableSpeciesInfo candidate in RegisteredSpecies.Values)
+        {
+            if (!candidate.IsEggLayer || string.IsNullOrEmpty(candidate.EggPrefabName))
+            {
+                continue;
+            }
+
+            if (candidate.EggPrefabName.Equals(normalized, System.StringComparison.OrdinalIgnoreCase))
+            {
+                info = candidate;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static bool HasDualPurposeEggLayers()
     {
         return RegisteredSpecies.Values.Any(species => species.IsDualPurposeEgg);

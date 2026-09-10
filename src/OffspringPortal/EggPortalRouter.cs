@@ -38,13 +38,21 @@ public static class EggPortalRouter
             return false;
         }
 
-        if (!SpeciesDiscovery.TryGetEggSpeciesInfo(egg, out BreedableSpeciesInfo speciesInfo))
-        {
-            return false;
-        }
-
         int bodyId = egg.GetInstanceID();
         float now = Time.time;
+
+        if (!SpeciesDiscovery.TryGetEggSpeciesInfo(egg, out BreedableSpeciesInfo speciesInfo))
+        {
+            if (now - lastNoDestinationMessageTime > 5f)
+            {
+                lastNoDestinationMessageTime = now;
+                string eggName = SpeciesKey.Normalize(egg.name);
+                OffspringPortalPlugin.Log.LogWarning(
+                    $"Breeder portal could not classify egg '{eggName}' for routing (missing EggGrow chain or species not discovered).");
+            }
+
+            return false;
+        }
         if (cooldowns.TryGetValue(bodyId, out float nextAllowed) && now < nextAllowed)
         {
             return false;

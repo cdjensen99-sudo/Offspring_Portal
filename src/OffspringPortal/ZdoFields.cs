@@ -12,9 +12,3 @@ public static class ZdoFields
     public const string MateDrawTarget = "op_mate_draw_target";
     public const string CapWarning = "op_cap_warning";
 }
-
-public static class PrefabNames
-{
-    public const string OffspringPortal = "offspring_portal";
-    public const string VanillaPortalWood = "portal_wood";
-}

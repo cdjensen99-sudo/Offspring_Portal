@@ -1,3 +1,4 @@
+using BepInEx.Bootstrap;
 using UnityEngine;
 
 namespace OffspringPortal;
@@ -7,6 +8,11 @@ public static class JuvenileFollow
     public static bool TryCommand(Character character, Player player, bool showMessage)
     {
         if (character == null || player == null)
+        {
+            return false;
+        }
+
+        if (!ModConfig.EnableFollowCommand.Value || IsBeastHirdLoaded())
         {
             return false;
         }
@@ -41,21 +47,30 @@ public static class JuvenileFollow
             return false;
         }
 
-        Tameable tameable = character.GetComponent<Tameable>();
-        MonsterAI monsterAi = character.GetComponent<MonsterAI>();
-        if (tameable != null && monsterAi != null)
-        {
-            tameable.m_commandable = true;
-            ApplyMonsterFollowToggle(tameable, monsterAi, player, showMessage);
-            return true;
-        }
-
         if (character.GetComponent<AnimalAI>() != null)
         {
             return ApplyAnimalFollowToggle(character, player, showMessage);
         }
 
+        MonsterAI monsterAi = character.GetComponent<MonsterAI>();
+        if (monsterAi != null)
+        {
+            Tameable tameable = character.GetComponent<Tameable>();
+            if (tameable != null)
+            {
+                tameable.m_commandable = true;
+            }
+
+            ApplyMonsterFollowToggle(character, monsterAi, player, showMessage);
+            return true;
+        }
+
         return false;
+    }
+
+    internal static bool IsBeastHirdLoaded()
+    {
+        return Chainloader.PluginInfos.ContainsKey("hardwire99.training");
     }
 
     public static bool IsFollowing(Character character)
@@ -76,16 +91,18 @@ public static class JuvenileFollow
     }
 
     private static void ApplyMonsterFollowToggle(
-        Tameable tameable,
+        Character character,
         MonsterAI monsterAi,
         Player player,
         bool showMessage)
     {
-        ZNetView nview = tameable.GetComponent<ZNetView>();
+        ZNetView nview = character.GetComponent<ZNetView>();
         if (nview != null && !nview.IsOwner())
         {
             nview.ClaimOwnership();
         }
+
+        string displayName = character.GetHoverName();
 
         if (monsterAi.GetFollowTarget() != null)
         {
@@ -100,7 +117,7 @@ public static class JuvenileFollow
             {
                 player.Message(
                     MessageHud.MessageType.Center,
-                    tameable.GetHoverName() + " " + Localization.instance.Localize("$hud_tamestay"));
+                    displayName + " " + Localization.instance.Localize("$hud_tamestay"));
             }
 
             return;
@@ -117,7 +134,7 @@ public static class JuvenileFollow
         {
             player.Message(
                 MessageHud.MessageType.Center,
-                tameable.GetHoverName() + " " + Localization.instance.Localize("$hud_tamefollow"));
+                displayName + " " + Localization.instance.Localize("$hud_tamefollow"));
         }
     }
 

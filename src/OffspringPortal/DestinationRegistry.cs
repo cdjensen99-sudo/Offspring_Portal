@@ -73,7 +73,7 @@ public static class DestinationRegistry
 
     public static void RefreshPortalPosition(PortalRecord record)
     {
-        if (record == null)
+        if (record == null || ZDOMan.instance == null)
         {
             return;
         }
@@ -146,9 +146,14 @@ public static class DestinationRegistry
             return false;
         }
 
+        string speciesKey = SpeciesKey.IsEggCollectorKey(eggCollectorKey)
+            ? eggCollectorKey.Substring(SpeciesKey.EggPrefix.Length)
+            : eggCollectorKey;
+
         List<PortalRecord> matches = Portals.Values
             .Where(p => p.Role == PortalRole.EggCollector
-                        && SpeciesKey.PortalAcceptsEgg(p.DeclaredSpeciesKey, eggCollectorKey))
+                        && (SpeciesKey.PortalAcceptsEgg(p.DeclaredSpeciesKey, eggCollectorKey)
+                            || SpeciesKey.PortalAcceptsSpecies(p.DeclaredSpeciesKey, speciesKey)))
             .OrderBy(p => p.Id.ToString())
             .ToList();
 
@@ -212,7 +217,7 @@ public static class DestinationRegistry
 
     public static void RefreshCapWarnings()
     {
-        if (!ModConfig.EnableCapWarning.Value)
+        if (!ModConfig.EnableCapWarning.Value || ZDOMan.instance == null)
         {
             return;
         }

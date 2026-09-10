@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0
+- **Valheim 1.0.7 release** — first stable 1.0-compatible build
+- Valheim 1.0 API fixes (`Hoverable.GetHoverOffset`, deferred prefab registration, portal piece registration retry)
+- Egg routing: dual-purpose eggs to Egg Collector, single-purpose (asksvin) to Maturing; improved prefab chain resolution and registry fallbacks
+- Mate draw yields to vanilla breeding AI when mates are in range (fixes lox/moose and other species not breeding)
+- Juvenile follow cleared on grow-up so adults do not retain follow state
+- Full end-to-end testing: boar, wolf, lox, hen, asksvin, moose — breed → maturing → farm round-robin
+- Updated Thunderstore dependencies for BepInEx 5.4.2350 and Jotunn 2.30.0
+
 ## 0.4.0
 - Offspring portals are excluded from player portal networks globally — they no longer appear in travel mod lists or map-based portal UIs
 

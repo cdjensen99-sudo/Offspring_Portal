@@ -1,11 +1,12 @@
 param(
-    [string]$ValheimPath = "D:\SteamLibrary\steamapps\common\Valheim"
+    [string]$ValheimPath = "D:\SteamLibrary\steamapps\common\Valheim",
+    [string]$GaleProfilePath = "C:\Users\cdjen\AppData\Roaming\com.kesomannen.gale\valheim\profiles\New Release"
 )
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-& (Join-Path $root "build.ps1") -ValheimPath $ValheimPath
+& (Join-Path $root "build.ps1") -ValheimPath $ValheimPath -GaleProfilePath $GaleProfilePath
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $staging = Join-Path $root "artifacts\thunderstore-staging"

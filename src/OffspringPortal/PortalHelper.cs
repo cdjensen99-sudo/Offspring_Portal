@@ -119,15 +119,37 @@ public static class PortalHelper
         DestinationRegistry.RegisterOrUpdate(zdo.m_uid, zdo.GetPosition(), role, speciesKey, adultDestination);
     }
 
-    public static void RebuildRegistryFromWorld()
+    public static bool IsWorldReady()
     {
-        MigrateAllLegacyPortals();
-        DestinationRegistry.Clear();
-        RebuildRegistryFromLoadedPortals();
-        RebuildRegistryFromAllPortalZdos();
-        BreedableSpeciesRegistry.RefreshFromAllBreeders();
-        DestinationRegistry.RefreshCapWarnings();
-        LogRegistryState("rebuilt");
+        return ZNetScene.instance != null && ZDOMan.instance != null;
+    }
+
+    public static void RebuildRegistryFromWorld(bool includeLegacyMigration = true)
+    {
+        if (!IsWorldReady())
+        {
+            OffspringPortalPlugin.Log?.LogDebug("Skipping portal registry rebuild — ZNetScene or ZDOMan not ready.");
+            return;
+        }
+
+        try
+        {
+            if (includeLegacyMigration)
+            {
+                MigrateAllLegacyPortals();
+            }
+
+            DestinationRegistry.Clear();
+            RebuildRegistryFromLoadedPortals();
+            RebuildRegistryFromAllPortalZdos();
+            BreedableSpeciesRegistry.RefreshFromAllBreeders();
+            DestinationRegistry.RefreshCapWarnings();
+            LogRegistryState("rebuilt");
+        }
+        catch (System.Exception ex)
+        {
+            OffspringPortalPlugin.Log?.LogError($"Portal registry rebuild failed: {ex}");
+        }
     }
 
     private static void MigrateAllLegacyPortals()
@@ -183,12 +205,19 @@ public static class PortalHelper
         }
 
         OPTeleportWorld[] portals = Object.FindObjectsByType<OPTeleportWorld>(FindObjectsSortMode.None);
+        if (portals == null)
+        {
+            return;
+        }
+
         foreach (OPTeleportWorld portal in portals)
         {
-            if (OffspringPortalPrefabs.IsOffspringPortal(portal))
+            if (portal == null || !OffspringPortalPrefabs.IsOffspringPortal(portal))
             {
-                SyncRegistryFromPortal(portal);
+                continue;
             }
+
+            SyncRegistryFromPortal(portal);
         }
     }
 

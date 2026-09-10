@@ -8,7 +8,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>..\..\artifacts\</OutputPath>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <Version>0.1.0</Version>
+    <Version>1.0.0</Version>
     <Description>Automatically teleports juvenile animals from breeding pens to configured grow-up pens.</Description>
   </PropertyGroup>
 
@@ -30,7 +30,7 @@
       <Private>false</Private>
     </Reference>
     <Reference Include="Jotunn">
-      <HintPath>C:\Users\cdjen\AppData\Roaming\r2modmanPlus-local\Valheim\profiles\Default\BepInEx\plugins\ValheimModding-Jotunn\Jotunn.dll</HintPath>
+      <HintPath>$(JotunnPath)</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="assembly_guiutils">

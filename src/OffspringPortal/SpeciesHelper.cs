@@ -4,6 +4,13 @@ namespace OffspringPortal;
 
 public static class SpeciesHelper
 {
+    private static readonly string[] JuvenilePrefabNameFallbacks =
+    {
+        "wolfcub",
+        "moose_calf",
+        "moosecalf"
+    };
+
     public static bool IsEligibleJuvenile(Character character)
     {
         if (character == null || !character.IsTamed())
@@ -16,8 +23,25 @@ public static class SpeciesHelper
             return true;
         }
 
-        string prefabName = character.name ?? string.Empty;
-        return prefabName.IndexOf("wolfcub", System.StringComparison.OrdinalIgnoreCase) >= 0;
+        return HasJuvenilePrefabNameFallback(character.name);
+    }
+
+    private static bool HasJuvenilePrefabNameFallback(string prefabName)
+    {
+        if (string.IsNullOrEmpty(prefabName))
+        {
+            return false;
+        }
+
+        foreach (string fragment in JuvenilePrefabNameFallbacks)
+        {
+            if (prefabName.IndexOf(fragment, System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static bool IsEligibleAdult(Character character)
@@ -59,6 +83,12 @@ public static class SpeciesHelper
         if (prefabName.IndexOf("wolfcub", System.StringComparison.OrdinalIgnoreCase) >= 0)
         {
             return SpeciesCatalog.ToStorageValue(SpeciesType.Wolf);
+        }
+
+        if (prefabName.IndexOf("moose_calf", System.StringComparison.OrdinalIgnoreCase) >= 0
+            || prefabName.IndexOf("moosecalf", System.StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return SpeciesCatalog.ToStorageValue(SpeciesType.Moose);
         }
 
         return string.Empty;

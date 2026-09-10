@@ -1,8 +1,14 @@
 <Project>
   <PropertyGroup>
+    <!-- Valheim 1.0.7 install (Unity 6). Override: dotnet build -p:ValheimPath=... -->
     <ValheimPath Condition="'$(ValheimPath)' == ''">D:\SteamLibrary\steamapps\common\Valheim</ValheimPath>
     <ValheimManaged>$(ValheimPath)\valheim_Data\Managed</ValheimManaged>
-    <BepInExPath Condition="'$(BepInExPath)' == ''">C:\Users\cdjen\AppData\Roaming\r2modmanPlus-local\Valheim\profiles\Default\BepInEx</BepInExPath>
+
+    <!-- BepInExPack 5.4.2350 lives in the mod profile, not the game folder. -->
+    <GaleProfilePath Condition="'$(GaleProfilePath)' == ''">C:\Users\cdjen\AppData\Roaming\com.kesomannen.gale\valheim\profiles\New Release</GaleProfilePath>
+    <BepInExPath Condition="'$(BepInExPath)' == ''">$(GaleProfilePath)\BepInEx</BepInExPath>
     <BepInExCore>$(BepInExPath)\core</BepInExCore>
+    <JotunnPath Condition="'$(JotunnPath)' == ''">$(BepInExPath)\plugins\ValheimModding-Jotunn\Jotunn.dll</JotunnPath>
   </PropertyGroup>
+  <Import Project="Directory.Build.props.user" Condition="Exists('Directory.Build.props.user')" />
 </Project>

@@ -32,7 +32,7 @@ public static class ModConfig
         AllowRetransport = config.Bind("General", "AllowRetransport", false,
             "If true, a juvenile can use the portal more than once.");
         EnableFollowCommand = config.Bind("General", "EnableFollowCommand", true,
-            "Press E on tamed juveniles to toggle follow/stay (Boar, Wolf, Lox, Hen, Asksvin).");
+            "Press E on tamed juveniles to toggle follow/stay (Boar, Wolf, Lox, Hen, Asksvin, Moose).");
         EnableCapWarning = config.Bind("General", "EnableCapWarning", true,
             "Show warning when a maturing portal is within species cap radius of a breeder portal.");
         MaturingAdultScanIntervalSec = config.Bind("General", "MaturingAdultScanIntervalSec", 30f,

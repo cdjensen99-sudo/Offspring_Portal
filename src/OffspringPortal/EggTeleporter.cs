@@ -16,7 +16,7 @@ public static class EggTeleporter
         Quaternion targetRot = PortalPlacement.GetExitRotation(destination.Id, sourcePortal);
 
         ZNetView nview = egg.GetComponent<ZNetView>();
-        if (nview == null || !nview.IsValid())
+        if (nview == null || nview.GetZDO() == null)
         {
             return false;
         }

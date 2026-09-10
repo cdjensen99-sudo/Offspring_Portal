@@ -88,13 +88,25 @@ public static class GameStartPatch
     {
         PortalRpc.Register();
         JuvenileFollowRpc.Register();
-        PortalHelper.RebuildRegistryFromWorld();
-        OffspringPortalRuntime.Instance.StartCoroutine(DelayedRegistryRebuild());
+        OffspringPortalRuntime.Instance.StartCoroutine(DeferredWorldSetup());
     }
 
-    private static IEnumerator DelayedRegistryRebuild()
+    private static IEnumerator DeferredWorldSetup()
     {
+        for (int i = 0; i < 120; i++)
+        {
+            if (PortalHelper.IsWorldReady())
+            {
+                break;
+            }
+
+            yield return null;
+        }
+
+        OffspringPortalPrefabs.EnsureRegistered();
+        PortalHelper.RebuildRegistryFromWorld();
         yield return new WaitForSeconds(2f);
+        OffspringPortalPrefabs.EnsureRegistered();
         PortalHelper.RebuildRegistryFromWorld();
     }
 }
@@ -104,8 +116,9 @@ public static class PlayerSpawnedPatch
 {
     private static void Postfix()
     {
+        OffspringPortalPrefabs.EnsureRegistered();
         OffspringPortalPrefabs.EnsurePieceRegistered();
-        PortalHelper.RebuildRegistryFromWorld();
+        PortalHelper.RebuildRegistryFromWorld(includeLegacyMigration: false);
     }
 }
 

@@ -1,6 +1,8 @@
 param(
     [string]$ValheimPath = "D:\SteamLibrary\steamapps\common\Valheim",
-    [string]$DeployProfile = "C:\Users\cdjen\AppData\Roaming\r2modmanPlus-local\Valheim\profiles\Default",
+    [string]$GaleProfilePath = "C:\Users\cdjen\AppData\Roaming\com.kesomannen.gale\valheim\profiles\New Release",
+    [string]$BepInExPath = "",
+    [string]$JotunnPath = "",
     [switch]$Deploy
 )
 
@@ -8,21 +10,50 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $project = Join-Path $root "src\OffspringPortal\OffspringPortal.csproj"
 
-dotnet build $project -p:ValheimPath=$ValheimPath -c Release
+if ([string]::IsNullOrWhiteSpace($BepInExPath)) {
+    $BepInExPath = Join-Path $GaleProfilePath "BepInEx"
+}
+
+if ([string]::IsNullOrWhiteSpace($JotunnPath)) {
+    $JotunnPath = Join-Path $BepInExPath "plugins\ValheimModding-Jotunn\Jotunn.dll"
+}
+
+if (-not (Test-Path (Join-Path $ValheimPath "valheim_Data\Managed\assembly_valheim.dll"))) {
+    Write-Error "Valheim assemblies not found at $ValheimPath\valheim_Data\Managed"
+}
+
+if (-not (Test-Path (Join-Path $BepInExPath "core\BepInEx.dll"))) {
+    Write-Error "BepInEx core not found at $BepInExPath\core. Point -GaleProfilePath or -BepInExPath at your active profile."
+}
+
+if (-not (Test-Path $JotunnPath)) {
+    Write-Error "Jotunn.dll not found at $JotunnPath"
+}
+
+Write-Host "ValheimPath:   $ValheimPath"
+Write-Host "BepInExPath:   $BepInExPath"
+Write-Host "JotunnPath:    $JotunnPath"
+
+dotnet build $project `
+    -p:ValheimPath=$ValheimPath `
+    -p:BepInExPath=$BepInExPath `
+    -p:JotunnPath=$JotunnPath `
+    -p:GaleProfilePath=$GaleProfilePath `
+    -c Release
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Write-Host "Built: $(Join-Path $root 'artifacts\OffspringPortal.dll')"
 
 if (-not $Deploy) {
-    Write-Host "Skipped deploy. Pass -Deploy to copy into the r2modman profile."
+    Write-Host "Skipped deploy. Pass -Deploy to copy into the Gale profile."
     exit 0
 }
 
 $dll = Join-Path $root "artifacts\OffspringPortal.dll"
-$pluginDir = Join-Path $DeployProfile "BepInEx\plugins\Hardwire99-Offspring_Portal"
-$legacyDir = Join-Path $DeployProfile "BepInEx\plugins\OffspringPortal-OffspringPortal"
-$devDeployDir = Join-Path $DeployProfile "BepInEx\plugins\HW-Offspring_Portal"
-$duplicateDir = Join-Path $DeployProfile "BepInEx\plugins\Unknown-OffspringPortal.dll"
+$pluginDir = Join-Path $GaleProfilePath "BepInEx\plugins\Hardwire99-Offspring_Portal"
+$legacyDir = Join-Path $GaleProfilePath "BepInEx\plugins\OffspringPortal-OffspringPortal"
+$devDeployDir = Join-Path $GaleProfilePath "BepInEx\plugins\HW-Offspring_Portal"
+$duplicateDir = Join-Path $GaleProfilePath "BepInEx\plugins\Unknown-OffspringPortal.dll"
 New-Item -ItemType Directory -Force -Path $pluginDir | Out-Null
 $dest = Join-Path $pluginDir "OffspringPortal.dll"
 try {

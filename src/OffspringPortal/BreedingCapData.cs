@@ -16,6 +16,8 @@ public static class BreedingCapData
                 return 10;
             case SpeciesType.Asksvin:
                 return 10;
+            case SpeciesType.Moose:
+                return 4;
             default:
                 return 0;
         }
@@ -31,6 +33,7 @@ public static class BreedingCapData
             case SpeciesType.Asksvin:
                 return 10f;
             case SpeciesType.Lox:
+            case SpeciesType.Moose:
                 return 20f;
             default:
                 return 0f;

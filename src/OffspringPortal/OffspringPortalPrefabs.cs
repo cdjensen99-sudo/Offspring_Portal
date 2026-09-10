@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using Jotunn.Managers;
 using UnityEngine;
 
@@ -9,12 +10,19 @@ public static class OffspringPortalPrefabs
     public static GameObject Prefab { get; private set; }
     public static bool Registered { get; private set; }
     private static bool pieceRegistered;
+    private static bool retryScheduled;
 
     public static void Initialize()
     {
         PrefabManager.OnVanillaPrefabsAvailable += RegisterPrefab;
+        PrefabManager.OnPrefabsRegistered += RegisterPrefab;
         PieceManager.OnPiecesRegistered += RegisterPiece;
         PrefabManager.OnPrefabsRegistered += RegisterPiece;
+    }
+
+    public static void EnsureRegistered()
+    {
+        RegisterPrefab();
     }
 
     public static void EnsurePieceRegistered()
@@ -29,28 +37,108 @@ public static class OffspringPortalPrefabs
             return;
         }
 
-        GameObject clone = PrefabManager.Instance.CreateClonedPrefab(
-            PrefabNames.OffspringPortal,
-            PrefabNames.VanillaPortalWood);
-
-        if (clone == null)
+        try
         {
-            OffspringPortalPlugin.Log.LogError("Failed to clone portal_wood via Jotunn.");
+            GameObject clone = PrefabManager.Instance.CreateClonedPrefab(
+                PrefabNames.OffspringPortal,
+                PrefabNames.VanillaPortalWood);
+
+            if (clone == null)
+            {
+                ScheduleRegisterRetry();
+                return;
+            }
+
+            ConfigureClone(clone);
+            OPTeleportWorld portal = ConvertFromVanillaPortal(clone);
+            EnsureRuntimeTriggers(portal);
+
+            PrefabManager.Instance.AddPrefab(clone);
+            Prefab = clone;
+            Registered = true;
+            retryScheduled = false;
+
+            PrefabManager.OnVanillaPrefabsAvailable -= RegisterPrefab;
+            PrefabManager.OnPrefabsRegistered -= RegisterPrefab;
+            OffspringPortalPlugin.Log.LogInfo(
+                $"Registered offspring_portal prefab (cloned from {PrefabNames.VanillaPortalWood}).");
+
+            RegisterPiece();
+        }
+        catch (Exception ex)
+        {
+            OffspringPortalPlugin.Log.LogError($"Failed to register offspring_portal prefab: {ex}");
+            ScheduleRegisterRetry();
+        }
+    }
+
+    private static void ScheduleRegisterRetry()
+    {
+        if (retryScheduled || Registered)
+        {
             return;
         }
 
-        ConfigureClone(clone);
-        OPTeleportWorld portal = ConvertFromVanillaPortal(clone);
-        EnsureRuntimeTriggers(portal);
+        retryScheduled = true;
+        OffspringPortalRuntime.Instance.StartCoroutine(RetryRegisterPrefab());
+    }
 
-        PrefabManager.Instance.AddPrefab(clone);
-        Prefab = clone;
-        Registered = true;
+    private static IEnumerator RetryRegisterPrefab()
+    {
+        const int maxFrames = 600;
 
-        PrefabManager.OnVanillaPrefabsAvailable -= RegisterPrefab;
-        OffspringPortalPlugin.Log.LogInfo("Registered offspring_portal prefab.");
+        for (int i = 0; i < maxFrames && !Registered; i++)
+        {
+            RegisterPrefab();
+            if (Registered)
+            {
+                yield break;
+            }
 
-        RegisterPiece();
+            yield return null;
+        }
+
+        retryScheduled = false;
+
+        if (!Registered)
+        {
+            OffspringPortalPlugin.Log.LogError(
+                $"Could not register offspring_portal: {PrefabNames.VanillaPortalWood} was unavailable after waiting for ZNetScene.");
+        }
+    }
+
+    internal static bool TryValidateVanillaPortalPrefab(out string message)
+    {
+        message = null;
+
+        if (!TryResolveVanillaPortalWood(out GameObject vanilla))
+        {
+            message =
+                $"{PrefabNames.VanillaPortalWood} was not found in ZNetScene at registration time. " +
+                "Offspring Portal cannot clone the vanilla wood portal.";
+            return false;
+        }
+
+        if (vanilla.GetComponent<TeleportWorld>() == null)
+        {
+            message =
+                $"{PrefabNames.VanillaPortalWood} exists but has no TeleportWorld component.";
+            return false;
+        }
+
+        return true;
+    }
+
+    internal static bool TryResolveVanillaPortalWood(out GameObject vanilla)
+    {
+        vanilla = null;
+
+        if (ZNetScene.instance != null)
+        {
+            vanilla = ZNetScene.instance.GetPrefab(PrefabNames.VanillaPortalWood);
+        }
+
+        return vanilla != null;
     }
 
     private static void RegisterPiece()
@@ -106,6 +194,7 @@ public static class OffspringPortalPrefabs
     {
         Transform proximityRoot = null;
         float exitDistance = PortalPlacement.ScaledExitDistance;
+        float hoverOffset = 0f;
         EffectList connectedVfx = null;
 
         TeleportWorld legacyPortal = gameObject.GetComponent<TeleportWorld>();
@@ -113,6 +202,7 @@ public static class OffspringPortalPrefabs
         {
             proximityRoot = legacyPortal.m_proximityRoot;
             exitDistance = legacyPortal.m_exitDistance;
+            hoverOffset = legacyPortal.m_hoverOffset;
             connectedVfx = legacyPortal.m_connected;
             DestroyPortalComponent(legacyPortal);
         }
@@ -128,7 +218,7 @@ public static class OffspringPortalPrefabs
             portal = gameObject.AddComponent<OPTeleportWorld>();
         }
 
-        portal.Initialize(proximityRoot, exitDistance, connectedVfx);
+        portal.Initialize(proximityRoot, exitDistance, connectedVfx, hoverOffset);
         return portal;
     }
 

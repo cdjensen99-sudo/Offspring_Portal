@@ -21,10 +21,10 @@ public static class MateDrawController
         Vector3 offset = partner.transform.position - character.transform.position;
         offset.y = 0f;
         float distance = offset.magnitude;
-        if (distance <= stopDistance)
+        Procreation procreation = character.GetComponent<Procreation>();
+        if (ShouldYieldBreedingToVanilla(character, procreation, distance, stopDistance))
         {
-            monsterAi.StopMoving();
-            return true;
+            return false;
         }
 
         bool run = distance > 10f;
@@ -50,10 +50,10 @@ public static class MateDrawController
         Vector3 offset = partner.transform.position - character.transform.position;
         offset.y = 0f;
         float distance = offset.magnitude;
-        if (distance <= stopDistance)
+        Procreation procreation = character.GetComponent<Procreation>();
+        if (ShouldYieldBreedingToVanilla(character, procreation, distance, stopDistance))
         {
-            animalAi.StopMoving();
-            return true;
+            return false;
         }
 
         animalAi.MoveTowards(offset / distance, distance > 10f);
@@ -154,6 +154,27 @@ public static class MateDrawController
 
         stopDistance = ProcreationHelper.GetStopDistance(procreation);
         return true;
+    }
+
+    private static bool ShouldYieldBreedingToVanilla(
+        Character character,
+        Procreation procreation,
+        float distance,
+        float stopDistance)
+    {
+        if (procreation != null && distance <= procreation.m_partnerCheckRange)
+        {
+            ClearMateDraw(character);
+            return true;
+        }
+
+        if (distance <= stopDistance)
+        {
+            ClearMateDraw(character);
+            return true;
+        }
+
+        return false;
     }
 
     private static Character ResolveCharacter(ZDOID characterId)

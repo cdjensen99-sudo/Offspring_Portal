@@ -5,6 +5,7 @@ artifacts/
 bin/
 obj/
 *.user
+Directory.Build.props.user
 *.suo
 .vs/
 

@@ -8,7 +8,7 @@ Build a portal, name it, configure it once, and let the mod handle the logistics
 
 **Offspring portals are for animal automation only** — players cannot travel through them. They are excluded from portal travel mod lists and map-based portal UIs.
 
-**Current version:** 0.4.0
+**Current version:** 1.0.0 · **Valheim 1.0.x**
 
 ---
 
@@ -333,10 +333,12 @@ Teleport logic runs on the server/host.
 
 ## Requirements
 
+**Valheim 1.0.x** (tested on 1.0.7). Not compatible with pre-1.0 saves/network versions.
+
 Installed automatically with most mod managers:
 
-- [BepInEx Pack](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/)
-- [Jotunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/)
+- [BepInEx Pack](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/) 5.4.2350+
+- [Jotunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/) 2.30.0+
 
 ### Manual install
 

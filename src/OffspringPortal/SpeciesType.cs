@@ -11,7 +11,8 @@ public enum SpeciesType
     Wolf,
     Lox,
     Chicken,
-    Asksvin
+    Asksvin,
+    Moose
 }
 
 public static class SpeciesCatalog
@@ -23,6 +24,7 @@ public static class SpeciesCatalog
         SpeciesType.Lox,
         SpeciesType.Chicken,
         SpeciesType.Asksvin,
+        SpeciesType.Moose,
         SpeciesType.All
     };
 
@@ -34,7 +36,9 @@ public static class SpeciesCatalog
         "Lox",
         "Hen",
         "Chicken",
-        "Asksvin"
+        "Asksvin",
+        "Moose",
+        "Moose_Calf"
     };
 
     public static readonly IReadOnlyList<string> LegacyDestinationOptionKeys = new[]
@@ -44,6 +48,7 @@ public static class SpeciesCatalog
         "Lox",
         "Chicken",
         "Asksvin",
+        "Moose",
         SpeciesKey.All
     };
 
@@ -80,6 +85,8 @@ public static class SpeciesCatalog
                 return "Hen";
             case SpeciesType.Asksvin:
                 return "Asksvin";
+            case SpeciesType.Moose:
+                return "Moose";
             default:
                 return "Breeder";
         }
