@@ -8,7 +8,7 @@ Build a portal, name it, configure it once, and let the mod handle the logistics
 
 **Offspring portals are for animal automation only** — players cannot travel through them. They are excluded from portal travel mod lists and map-based portal UIs.
 
-**Current version:** 1.0.0 · **Valheim 1.0.x**
+**Current version:** 1.0.1 · **Valheim 1.0.x stable release**
 
 ---
 

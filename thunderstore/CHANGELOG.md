@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+- **Stable Valheim 1.0.x ship release** (tested on 1.0.7; compatible with 1.0.x hotfixes)
+- Fix Hammer build menu showing raw localization keys for the Offspring Portal piece name and description
+
 ## 1.0.0
 - **Valheim 1.0.7 release** — first stable 1.0-compatible build
 - Valheim 1.0 API fixes (`Hoverable.GetHoverOffset`, deferred prefab registration, portal piece registration retry)
