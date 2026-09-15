@@ -87,9 +87,17 @@ public static class PortalRoleCatalog
 
     public static string ResolveSpeciesKey(PortalRole role, string selectedSpeciesKey)
     {
-        return role == PortalRole.Breeder || role == PortalRole.Cull
-            ? string.Empty
-            : selectedSpeciesKey ?? string.Empty;
+        if (role == PortalRole.Breeder || role == PortalRole.Cull)
+        {
+            return string.Empty;
+        }
+
+        if (role == PortalRole.EggCollector)
+        {
+            return SpeciesKey.BuildEggCollectorKey(selectedSpeciesKey);
+        }
+
+        return selectedSpeciesKey ?? string.Empty;
     }
 
     public static SpeciesType ResolveSpecies(PortalRole role, SpeciesType selectedSpecies)

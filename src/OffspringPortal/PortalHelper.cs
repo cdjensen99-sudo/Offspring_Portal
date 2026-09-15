@@ -106,9 +106,21 @@ public static class PortalHelper
         DestinationRegistry.RefreshCapWarnings();
     }
 
+    public static void SyncRegistryFromAllPortalZdos()
+    {
+        RebuildRegistryFromAllPortalZdos();
+    }
+
     public static void SyncRegistryFromZdo(ZDO zdo)
     {
-        if (zdo == null || zdo.GetPrefab() != PrefabNames.OffspringPortal.GetStableHashCode())
+        if (zdo == null)
+        {
+            return;
+        }
+
+        bool isOffspringPrefab = zdo.GetPrefab() == PrefabNames.OffspringPortal.GetStableHashCode();
+        bool hasPortalRole = !string.IsNullOrEmpty(zdo.GetString(ZdoFields.PortalRole, string.Empty));
+        if (!isOffspringPrefab && !hasPortalRole)
         {
             return;
         }

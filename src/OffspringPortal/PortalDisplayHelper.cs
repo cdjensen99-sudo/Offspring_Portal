@@ -69,10 +69,15 @@ public static class PortalDisplayHelper
     {
         string name = GetDisplayName(zdo);
         string detail = GetDetailLine(role, speciesKey, adultDestination);
+        string connection = PortalConnectionStatus.GetHoverConnectionLine(
+            role,
+            speciesKey,
+            adultDestination,
+            zdo.m_uid);
         string warning = BuildWarnings(role, speciesKey, adultDestination, capWarning);
 
         return Localization.instance.Localize(
-            $"Name: {name}\n{detail}{warning}\n[<color=yellow><b>$KEY_Use</b></color>] Configure");
+            $"Name: {name}\n{detail}\n{connection}{warning}\n[<color=yellow><b>$KEY_Use</b></color>] Configure");
     }
 
     public static string GetHoverText(

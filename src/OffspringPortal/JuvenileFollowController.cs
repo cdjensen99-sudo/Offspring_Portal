@@ -18,7 +18,7 @@ public sealed class JuvenileFollowController : MonoBehaviour
             return false;
         }
 
-        if (!ZNet.instance.IsServer() || !nview.IsOwner())
+        if (!nview.IsOwner())
         {
             return false;
         }

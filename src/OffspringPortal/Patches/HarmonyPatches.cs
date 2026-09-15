@@ -87,6 +87,7 @@ public static class GameStartPatch
     private static void Postfix()
     {
         PortalRpc.Register();
+        RoutingRpc.Register();
         JuvenileFollowRpc.Register();
         OffspringPortalRuntime.Instance.StartCoroutine(DeferredWorldSetup());
     }
@@ -195,7 +196,7 @@ public static class PlayerFindHoverObjectPatch
 {
     private static void Postfix(Player __instance, ref GameObject hover, ref Character hoverCreature)
     {
-        if (!ModConfig.EnableFollowCommand.Value)
+        if (!ModConfig.EnableFollowCommand.Value || JuvenileFollow.IsLetsGoLoaded())
         {
             return;
         }
@@ -218,7 +219,7 @@ public static class PlayerJuvenileInteractPatch
 {
     private static bool Prefix(Player __instance, GameObject go, bool hold, bool alt)
     {
-        if (hold || alt || !ModConfig.EnableFollowCommand.Value)
+        if (hold || alt || !ModConfig.EnableFollowCommand.Value || JuvenileFollow.IsLetsGoLoaded())
         {
             return true;
         }
@@ -248,7 +249,7 @@ public static class TameableInteractPatch
 {
     private static void Prefix(Tameable __instance, ref bool ___m_commandable)
     {
-        if (!ModConfig.EnableFollowCommand.Value)
+        if (!ModConfig.EnableFollowCommand.Value || JuvenileFollow.IsLetsGoLoaded())
         {
             return;
         }

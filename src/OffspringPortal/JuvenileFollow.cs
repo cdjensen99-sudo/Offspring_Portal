@@ -5,6 +5,8 @@ namespace OffspringPortal;
 
 public static class JuvenileFollow
 {
+    internal const string LetsGoPluginGuid = "hardwire99.letsgo";
+
     public static bool TryCommand(Character character, Player player, bool showMessage)
     {
         if (character == null || player == null)
@@ -12,7 +14,7 @@ public static class JuvenileFollow
             return false;
         }
 
-        if (!ModConfig.EnableFollowCommand.Value || IsBeastHirdLoaded())
+        if (!ModConfig.EnableFollowCommand.Value || IsLetsGoLoaded())
         {
             return false;
         }
@@ -68,9 +70,9 @@ public static class JuvenileFollow
         return false;
     }
 
-    internal static bool IsBeastHirdLoaded()
+    internal static bool IsLetsGoLoaded()
     {
-        return Chainloader.PluginInfos.ContainsKey("hardwire99.training");
+        return Chainloader.PluginInfos.ContainsKey(LetsGoPluginGuid);
     }
 
     public static bool IsFollowing(Character character)

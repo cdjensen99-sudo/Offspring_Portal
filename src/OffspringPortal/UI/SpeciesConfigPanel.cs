@@ -23,11 +23,13 @@ public sealed class SpeciesConfigPanel
     private const float TypeRowTop = -140f;
     private const float ReceivesRowTop = -196f;
     private const float DestinationRowTop = -252f;
+    private const float StatusRowTop = -308f;
     private const float ButtonRowHeight = ButtonHeight + Padding;
 
     private GameObject mainPanel;
     private GameObject receivesLabelObject;
     private GameObject destinationLabelObject;
+    private GameObject statusTextObject;
     private InputField nameInputField;
     private Dropdown typeDropdown;
     private Dropdown speciesDropdown;
@@ -112,7 +114,7 @@ public sealed class SpeciesConfigPanel
         }
 
         float panelWidth = Padding + LabelWidth + Padding + InputWidth + Padding;
-        float contentBottom = -DestinationRowTop + RowHeight + Padding;
+        float contentBottom = -StatusRowTop + RowHeight + Padding;
         float panelHeight = contentBottom + ButtonRowHeight + Padding;
 
         mainPanel = GUIManager.Instance.CreateWoodpanel(
@@ -209,6 +211,30 @@ public sealed class SpeciesConfigPanel
         destinationDropdown = destinationDropdownObject.GetComponent<Dropdown>();
         destinationDropdown.onValueChanged.AddListener(new UnityAction<int>(OnDestinationChanged));
         ApplyDropdownStyle(destinationDropdown);
+
+        CreateLabel("Status", StatusRowTop, out _);
+        statusTextObject = GUIManager.Instance.CreateText(
+            string.Empty,
+            mainPanel.transform,
+            new Vector2(0f, 1f),
+            new Vector2(1f, 1f),
+            new Vector2(SecondColumnLeft, StatusRowTop),
+            GUIManager.Instance.AveriaSerif,
+            16,
+            Color.white,
+            true,
+            Color.black,
+            InputWidth,
+            RowHeight * 3f,
+            false);
+        statusTextObject.GetComponent<RectTransform>().pivot = new Vector2(0f, 1f);
+        Text statusText = statusTextObject.GetComponent<Text>();
+        if (statusText != null)
+        {
+            statusText.alignment = TextAnchor.UpperLeft;
+            statusText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            statusText.verticalOverflow = VerticalWrapMode.Overflow;
+        }
 
         if (typeDropdown == null || speciesDropdown == null || destinationDropdown == null)
         {
@@ -449,6 +475,8 @@ public sealed class SpeciesConfigPanel
         {
             savedSpeciesKey = speciesKey;
         }
+
+        UpdateConnectionStatus();
     }
 
     private void OnDestinationChanged(int index)
@@ -457,6 +485,8 @@ public sealed class SpeciesConfigPanel
         {
             savedDestination = destination;
         }
+
+        UpdateConnectionStatus();
     }
 
     private void UpdatePanelState()
@@ -480,6 +510,7 @@ public sealed class SpeciesConfigPanel
             speciesDropdown.options.Add(new Dropdown.OptionData("All juveniles"));
             speciesDropdown.value = 0;
             speciesDropdown.RefreshShownValue();
+            UpdateConnectionStatus();
             return;
         }
 
@@ -490,6 +521,7 @@ public sealed class SpeciesConfigPanel
             speciesDropdown.options.Add(new Dropdown.OptionData("All adults"));
             speciesDropdown.value = 0;
             speciesDropdown.RefreshShownValue();
+            UpdateConnectionStatus();
             return;
         }
 
@@ -510,6 +542,30 @@ public sealed class SpeciesConfigPanel
         {
             PopulateDestinationDropdown(savedDestination);
         }
+
+        UpdateConnectionStatus();
+    }
+
+    private void UpdateConnectionStatus()
+    {
+        if (statusTextObject == null)
+        {
+            return;
+        }
+
+        Text statusText = statusTextObject.GetComponent<Text>();
+        if (statusText == null)
+        {
+            return;
+        }
+
+        PortalRole role = GetSelectedRole();
+        string speciesKey = PortalRoleCatalog.ResolveSpeciesKey(role, GetSelectedSpeciesKey());
+        AdultDestination destination = GetSelectedDestination();
+        bool ready = PortalConnectionStatus.IsRoutingReady(role, speciesKey, destination);
+        string summary = PortalConnectionStatus.GetStatusSummary(role, speciesKey, destination, portalId);
+        statusText.color = ready ? Color.green : GUIManager.Instance.ValheimYellow;
+        statusText.text = Localization.instance.Localize(summary);
     }
 
     private PortalRole GetSelectedRole()

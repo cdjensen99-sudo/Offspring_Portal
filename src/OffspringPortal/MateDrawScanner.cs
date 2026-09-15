@@ -9,7 +9,7 @@ public static class MateDrawScanner
     {
         if (!ModConfig.EnableMateDraw.Value
             || portal == null
-            || !ZNet.instance.IsServer()
+            || !PortalScanHelper.ShouldScanPortal(portal)
             || !JuvenilePortalRouter.IsBreederPortal(portal))
         {
             return;

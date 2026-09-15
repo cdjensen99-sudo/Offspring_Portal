@@ -8,7 +8,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputPath>..\..\artifacts\</OutputPath>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
-    <Version>1.0.1</Version>
+    <Version>1.1.0</Version>
     <Description>Automatically teleports juvenile animals from breeding pens to configured grow-up pens.</Description>
   </PropertyGroup>
 

@@ -151,6 +151,7 @@ public static class OffspringPortalPrefabs
         try
         {
             ApplyRecipe(Prefab);
+            ApplyHammerIcon(Prefab);
             PieceManager.Instance.RegisterPieceInPieceTable(Prefab, "Hammer");
             pieceRegistered = true;
             PieceManager.OnPiecesRegistered -= RegisterPiece;
@@ -196,6 +197,9 @@ public static class OffspringPortalPrefabs
         float exitDistance = PortalPlacement.ScaledExitDistance;
         float hoverOffset = 0f;
         EffectList connectedVfx = null;
+        MeshRenderer model = null;
+        Color colorUnconnected = Color.white;
+        Color colorTargetfound = Color.white;
 
         TeleportWorld legacyPortal = gameObject.GetComponent<TeleportWorld>();
         if (legacyPortal != null)
@@ -204,6 +208,9 @@ public static class OffspringPortalPrefabs
             exitDistance = legacyPortal.m_exitDistance;
             hoverOffset = legacyPortal.m_hoverOffset;
             connectedVfx = legacyPortal.m_connected;
+            model = legacyPortal.m_model;
+            colorUnconnected = legacyPortal.m_colorUnconnected;
+            colorTargetfound = legacyPortal.m_colorTargetfound;
             DestroyPortalComponent(legacyPortal);
         }
 
@@ -218,8 +225,37 @@ public static class OffspringPortalPrefabs
             portal = gameObject.AddComponent<OPTeleportWorld>();
         }
 
-        portal.Initialize(proximityRoot, exitDistance, connectedVfx, hoverOffset);
+        portal.Initialize(
+            proximityRoot,
+            exitDistance,
+            connectedVfx,
+            hoverOffset,
+            model,
+            colorUnconnected,
+            colorTargetfound);
         return portal;
+    }
+
+    private static void ApplyHammerIcon(GameObject prefab)
+    {
+        Piece piece = prefab?.GetComponent<Piece>();
+        if (piece == null)
+        {
+            return;
+        }
+
+        try
+        {
+            Sprite sprite = PortalHammerIcon.Create(prefab);
+            if (sprite != null)
+            {
+                piece.m_icon = sprite;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            OffspringPortalPlugin.Log.LogWarning($"Could not render offspring portal hammer icon: {ex.Message}");
+        }
     }
 
     public static void MigrateLegacyPortal(GameObject gameObject)

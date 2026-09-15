@@ -55,7 +55,7 @@ public static class DestinationRegistry
 
         record.Position = position;
         record.Role = role;
-        record.DeclaredSpeciesKey = declaredSpeciesKey ?? string.Empty;
+        record.DeclaredSpeciesKey = NormalizeDeclaredSpeciesKey(role, declaredSpeciesKey);
         record.DeclaredSpecies = SpeciesCatalog.FromStorageValue(record.DeclaredSpeciesKey);
         record.AdultDestination = adultDestination;
     }
@@ -146,14 +146,14 @@ public static class DestinationRegistry
             return false;
         }
 
-        string speciesKey = SpeciesKey.IsEggCollectorKey(eggCollectorKey)
-            ? eggCollectorKey.Substring(SpeciesKey.EggPrefix.Length)
-            : eggCollectorKey;
+        string normalizedEggKey = SpeciesKey.BuildEggCollectorKey(eggCollectorKey);
+        string speciesKey = SpeciesKey.IsEggCollectorKey(normalizedEggKey)
+            ? normalizedEggKey.Substring(SpeciesKey.EggPrefix.Length)
+            : SpeciesKey.Canonicalize(eggCollectorKey);
 
         List<PortalRecord> matches = Portals.Values
             .Where(p => p.Role == PortalRole.EggCollector
-                        && (SpeciesKey.PortalAcceptsEgg(p.DeclaredSpeciesKey, eggCollectorKey)
-                            || SpeciesKey.PortalAcceptsSpecies(p.DeclaredSpeciesKey, speciesKey)))
+                        && PortalAcceptsEggCollector(p.DeclaredSpeciesKey, normalizedEggKey, speciesKey))
             .OrderBy(p => p.Id.ToString())
             .ToList();
 
@@ -284,6 +284,41 @@ public static class DestinationRegistry
         }
 
         return false;
+    }
+
+    private static string NormalizeDeclaredSpeciesKey(PortalRole role, string declaredSpeciesKey)
+    {
+        if (role == PortalRole.EggCollector)
+        {
+            return SpeciesKey.BuildEggCollectorKey(declaredSpeciesKey);
+        }
+
+        return declaredSpeciesKey ?? string.Empty;
+    }
+
+    private static bool PortalAcceptsEggCollector(
+        string portalSpeciesKey,
+        string normalizedEggKey,
+        string speciesKey)
+    {
+        if (string.IsNullOrWhiteSpace(portalSpeciesKey))
+        {
+            return false;
+        }
+
+        if (SpeciesKey.PortalAcceptsEgg(portalSpeciesKey, normalizedEggKey))
+        {
+            return true;
+        }
+
+        if (SpeciesKey.PortalAcceptsSpecies(portalSpeciesKey, speciesKey))
+        {
+            return true;
+        }
+
+        return SpeciesKey.Canonicalize(portalSpeciesKey).Equals(
+            speciesKey,
+            System.StringComparison.OrdinalIgnoreCase);
     }
 
     private static PortalRecord PickRoundRobin(

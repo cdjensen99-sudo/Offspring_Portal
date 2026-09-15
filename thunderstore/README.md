@@ -8,7 +8,7 @@ Build a portal, name it, configure it once, and let the mod handle the logistics
 
 **Offspring portals are for animal automation only** — players cannot travel through them. They are excluded from portal travel mod lists and map-based portal UIs.
 
-**Current version:** 1.0.1 · **Valheim 1.0.x stable release**
+**Current version:** 1.1.0 · **Valheim 1.0.x production release**
 
 ---
 
@@ -40,7 +40,8 @@ When reporting a problem, include your mod version, single-player or multiplayer
 - **Juvenile follow command** — Press **E** on tamed juveniles to toggle Follow / Stay (configurable)
 - **Breeding cap warning** — Hover warning when a maturing pen sits inside vanilla breeding cap radius
 - **Distant pen support** — Teleports wait for unloaded zones before giving up
-- **Multiplayer support** — Routing runs on host; all players need the mod installed
+- **Multiplayer support** — Active-zone routing with server-validated destinations; all players need the mod installed
+- **Connected portal glow** — Runes light up when routing is ready; status on hover and in config UI
 - **Portal network compatible** — Offspring portals are excluded from player portal travel lists (XPortal, map portals, and similar mods)
 - **Players cannot travel** — Offspring portals are for animals only, not player teleportation
 - **Configurable** — Scan range, mate draw, discovery radius, intervals, cooldowns, and more via `offspringportal.mod.cfg`
@@ -327,7 +328,15 @@ Restart Valheim after changing config values.
 
 Install on **server/host and every client**. Everyone needs the mod to see the custom portal piece, open the config UI, and get correct hover text. BepInEx and Jotunn are required on all sides.
 
-Teleport logic runs on the server/host.
+**Routing:** Destination registry and round-robin selection are server-authoritative. **Detection** runs on whichever peer has the portal and animals in their **active zone** — any player staying near pens can keep automation working while others explore. You do **not** need the host specifically to stand at the pens (same as vanilla breeding).
+
+**Client config sync:** Portal configuration updates the local registry immediately on every client, so connected rune glow and the Configure Portal status line stay accurate in multiplayer.
+
+**Dedicated servers:** Same rules apply — a connected player near the pens drives routing on their client; the headless server validates destinations via RPC and keeps its registry synced from world ZDO data.
+
+**Offline pens:** With no players in active range, vanilla breeding and portal routing pause (expected).
+
+**LetsGo compatibility:** When [LetsGo](https://thunderstore.io/c/valheim/p/Hardwire99/LetsGo/) is installed, Offspring Portal disables its own juvenile follow command so LetsGo owns follow behavior.
 
 ---
 

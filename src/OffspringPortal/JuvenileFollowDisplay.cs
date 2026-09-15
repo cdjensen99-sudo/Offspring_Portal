@@ -5,7 +5,7 @@ public static class JuvenileFollowDisplay
     public static void ApplyFollowHover(Character character, ref string hoverText)
     {
         if (!ModConfig.EnableFollowCommand.Value
-            || JuvenileFollow.IsBeastHirdLoaded()
+            || JuvenileFollow.IsLetsGoLoaded()
             || character == null
             || !SpeciesHelper.IsEligibleJuvenile(character)
             || !character.IsTamed())

@@ -31,7 +31,7 @@ public class OffspringPortalScanner : MonoBehaviour
 
     private void ScanForJuveniles()
     {
-        if (!ZNet.instance.IsServer() || portal == null || !OffspringPortalPrefabs.IsOffspringPortal(portal))
+        if (!PortalScanHelper.ShouldScanPortal(portal) || !OffspringPortalPrefabs.IsOffspringPortal(portal))
         {
             return;
         }
@@ -50,7 +50,7 @@ public class OffspringPortalScanner : MonoBehaviour
 
     private void ScanForAdults()
     {
-        if (!ZNet.instance.IsServer() || portal == null || !OffspringPortalPrefabs.IsOffspringPortal(portal))
+        if (!PortalScanHelper.ShouldScanPortal(portal) || !OffspringPortalPrefabs.IsOffspringPortal(portal))
         {
             return;
         }
@@ -119,7 +119,7 @@ public class OffspringPortalScanner : MonoBehaviour
 
     private void ScanForMateDraw()
     {
-        if (!ZNet.instance.IsServer() || portal == null || !OffspringPortalPrefabs.IsOffspringPortal(portal))
+        if (!PortalScanHelper.ShouldScanPortal(portal) || !OffspringPortalPrefabs.IsOffspringPortal(portal))
         {
             return;
         }

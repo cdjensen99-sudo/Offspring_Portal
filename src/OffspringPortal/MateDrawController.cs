@@ -101,7 +101,7 @@ public static class MateDrawController
         partner = null;
         stopDistance = ModConfig.MateDrawStopDistance.Value;
 
-        if (character == null || !ZNet.instance.IsServer())
+        if (character == null)
         {
             return false;
         }

@@ -8,6 +8,7 @@ public sealed class OffspringPortalRuntime : MonoBehaviour
 {
     private static OffspringPortalRuntime instance;
     private readonly HashSet<ZDOID> pendingTeleports = new HashSet<ZDOID>();
+    private float configRetryTimer;
 
     public static OffspringPortalRuntime Instance
     {
@@ -21,6 +22,21 @@ public sealed class OffspringPortalRuntime : MonoBehaviour
             }
 
             return instance;
+        }
+    }
+
+    private void Update()
+    {
+        if (ZNet.instance == null)
+        {
+            return;
+        }
+
+        configRetryTimer += Time.deltaTime;
+        if (configRetryTimer >= 0.5f)
+        {
+            configRetryTimer = 0f;
+            PortalRpc.ProcessPendingConfigs();
         }
     }
 

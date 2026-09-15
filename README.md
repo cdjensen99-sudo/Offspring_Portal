@@ -188,7 +188,9 @@ Restart Valheim after changing config values.
 
 Install on **server/host and every client**. Everyone needs the mod to see the custom portal piece, open the config UI, and get correct hover text. BepInEx and Jotunn are required on all sides.
 
-Teleport logic runs on the server/host.
+Destination registry and round-robin are server-authoritative. Detection runs on whichever peer has portals in their **active zone** — any player near pens can keep automation working while others explore. Portal config syncs to each client's local registry so connected rune glow and status text stay accurate after remote configuration.
+
+When **LetsGo** is installed, Offspring Portal yields juvenile follow to LetsGo automatically.
 
 ---
 

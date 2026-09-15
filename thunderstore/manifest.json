@@ -1,6 +1,6 @@
 {
   "name": "Offspring_Portal",
-  "version_number": "1.0.1",
+  "version_number": "1.1.0",
   "website_url": "https://discord.gg/cCNG8xKXMn",
   "description": "Teleports tamed juveniles and breedable eggs from breeder portals. Dynamic species discovery from breeding pens. Dual-purpose egg collector portal. Mod creature support.",
   "dependencies": [
