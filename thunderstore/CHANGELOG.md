@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0
+- **Valheim 1.0.x final release** — validated on solo, hosted, and dedicated servers
+- **Dedicated server routing** — portal scans honor connected players' active zones (not the headless server origin)
+- **Dedicated teleports** — server moves juveniles and eggs by ZDO when creatures are not instantiated locally; clients claim ownership before applying moves
+- **Routing RPC** — execute teleports on both the requesting peer and the ZDO owner when they differ
+- **Routing diagnostics** — log when no maturing or egg destination is registered on the server
+
+## 1.1.1
+- **Dedicated server routing** — scans use connected players' active zones (not the empty dedicated origin)
+- **Dedicated teleports** — server moves juveniles by ZDO when the live creature is not instantiated; clients claim ownership before applying the move
+
 ## 1.1.0
 - **Valheim 1.0.x production release** — stable, feature-complete build for 1.0.x (tested through 1.0.7+ hotfixes)
 - **Multiplayer routing fix** — server refreshes portal registry from world ZDOs before resolving routes; execute teleports on the client with the active zone loaded

@@ -89,6 +89,7 @@ public static class RoutingRpc
 
         if (!DestinationRegistry.TryResolveMaturingDestination(speciesKey, out PortalRecord destination))
         {
+            OffspringPortalPlugin.Log.LogWarning($"No maturing portal registered for '{speciesKey}'.");
             return;
         }
 
@@ -97,7 +98,12 @@ public static class RoutingRpc
             return;
         }
 
-        ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcExecuteJuvenileRoute, characterId, sourcePortalId, destination.Id);
+        if (JuvenileTeleporter.TryMoveZdo(characterId, destination, sourcePortalId))
+        {
+            OffspringPortalPlugin.Log.LogInfo($"Moved {speciesKey} juvenile via ZDO to maturing portal at {destination.Position}.");
+        }
+
+        InvokeExecuteJuvenile(sender, characterId, sourcePortalId, destination.Id);
     }
 
     private static void OnExecuteJuvenileRoute(long sender, ZDOID characterId, ZDOID sourcePortalId, ZDOID destinationPortalId)
@@ -130,6 +136,7 @@ public static class RoutingRpc
 
         if (!EggRoutingResolver.TryResolveDestination(speciesInfo, out PortalRecord destination))
         {
+            OffspringPortalPlugin.Log.LogWarning($"No egg destination registered for '{speciesKey}'.");
             return;
         }
 
@@ -138,7 +145,7 @@ public static class RoutingRpc
             return;
         }
 
-        ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcExecuteEggRoute, eggId, sourcePortalId, destination.Id);
+        InvokeExecuteEgg(sender, eggId, sourcePortalId, destination.Id);
     }
 
     private static void OnExecuteEggRoute(long sender, ZDOID eggId, ZDOID sourcePortalId, ZDOID destinationPortalId)
@@ -193,7 +200,12 @@ public static class RoutingRpc
             return;
         }
 
-        ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcExecuteAdultRoute, characterId, sourcePortalId, destination.Id);
+        if (JuvenileTeleporter.TryMoveZdo(characterId, destination, sourcePortalId))
+        {
+            OffspringPortalPlugin.Log.LogInfo($"Moved {speciesKey} adult via ZDO to {source.AdultDestination} portal at {destination.Position}.");
+        }
+
+        InvokeExecuteAdult(sender, characterId, sourcePortalId, destination.Id);
     }
 
     private static void OnExecuteAdultRoute(long sender, ZDOID characterId, ZDOID sourcePortalId, ZDOID destinationPortalId)
@@ -222,6 +234,36 @@ public static class RoutingRpc
 
         ServerCooldowns[subjectId] = now + ModConfig.TeleportCooldownSec.Value;
         return true;
+    }
+
+    private static void InvokeExecuteJuvenile(long sender, ZDOID characterId, ZDOID sourcePortalId, ZDOID destinationId)
+    {
+        ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcExecuteJuvenileRoute, characterId, sourcePortalId, destinationId);
+        long owner = ZDOMan.instance?.GetZDO(characterId)?.GetOwner() ?? 0L;
+        if (owner != 0L && owner != sender)
+        {
+            ZRoutedRpc.instance.InvokeRoutedRPC(owner, RpcExecuteJuvenileRoute, characterId, sourcePortalId, destinationId);
+        }
+    }
+
+    private static void InvokeExecuteEgg(long sender, ZDOID eggId, ZDOID sourcePortalId, ZDOID destinationId)
+    {
+        ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcExecuteEggRoute, eggId, sourcePortalId, destinationId);
+        long owner = ZDOMan.instance?.GetZDO(eggId)?.GetOwner() ?? 0L;
+        if (owner != 0L && owner != sender)
+        {
+            ZRoutedRpc.instance.InvokeRoutedRPC(owner, RpcExecuteEggRoute, eggId, sourcePortalId, destinationId);
+        }
+    }
+
+    private static void InvokeExecuteAdult(long sender, ZDOID characterId, ZDOID sourcePortalId, ZDOID destinationId)
+    {
+        ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcExecuteAdultRoute, characterId, sourcePortalId, destinationId);
+        long owner = ZDOMan.instance?.GetZDO(characterId)?.GetOwner() ?? 0L;
+        if (owner != 0L && owner != sender)
+        {
+            ZRoutedRpc.instance.InvokeRoutedRPC(owner, RpcExecuteAdultRoute, characterId, sourcePortalId, destinationId);
+        }
     }
 
     private static bool TryExecuteJuvenileRouteLocally(

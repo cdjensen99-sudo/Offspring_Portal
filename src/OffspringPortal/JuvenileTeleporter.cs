@@ -64,13 +64,13 @@ public static class JuvenileTeleporter
             return false;
         }
 
-        if (ZNet.instance.IsServer())
+        if (!nview.IsOwner())
         {
             nview.ClaimOwnership();
-        }
-        else if (!nview.IsOwner())
-        {
-            return false;
+            if (!nview.IsOwner() && !ZNet.instance.IsServer())
+            {
+                return false;
+            }
         }
 
         Tameable tameable = juvenile.GetComponent<Tameable>();
@@ -104,6 +104,46 @@ public static class JuvenileTeleporter
             zdo.Set(ZdoFields.Transported, true);
         }
 
+        return true;
+    }
+
+    public static bool TryMoveZdo(ZDOID characterId, PortalRecord destination, ZDOID sourcePortalId)
+    {
+        if (!ZNet.instance.IsServer() || characterId == ZDOID.None || destination == null || ZDOMan.instance == null)
+        {
+            return false;
+        }
+
+        ZDO zdo = ZDOMan.instance.GetZDO(characterId);
+        if (zdo == null)
+        {
+            return false;
+        }
+
+        if (zdo.GetBool(ZdoFields.Transported) && !ModConfig.AllowRetransport.Value)
+        {
+            return false;
+        }
+
+        zdo.SetOwner(ZDOMan.GetSessionID());
+
+        OPTeleportWorld sourcePortal = null;
+        GameObject sourceObject = ZNetScene.instance?.FindInstance(sourcePortalId);
+        if (sourceObject != null)
+        {
+            sourcePortal = sourceObject.GetComponent<OPTeleportWorld>();
+        }
+
+        Vector3 targetPos = PortalPlacement.GetExitPosition(destination.Id, sourcePortal);
+        Quaternion targetRot = PortalPlacement.GetExitRotation(destination.Id, sourcePortal);
+        if (JuvenilePlacement.TryGetFloorPosition(targetPos, out Vector3 grounded))
+        {
+            targetPos = grounded;
+        }
+
+        zdo.SetPosition(targetPos);
+        zdo.SetRotation(targetRot);
+        zdo.Set(ZdoFields.Transported, true);
         return true;
     }
 

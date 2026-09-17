@@ -8,7 +8,7 @@ Build a portal, name it, configure it once, and let the mod handle the logistics
 
 **Offspring portals are for animal automation only** — players cannot travel through them. They are excluded from portal travel mod lists and map-based portal UIs.
 
-**Current version:** 1.1.0 · **Valheim 1.0.x production release**
+**Current version:** 1.2.0 · **Valheim 1.0.x final release**
 
 ---
 
@@ -332,7 +332,7 @@ Install on **server/host and every client**. Everyone needs the mod to see the c
 
 **Client config sync:** Portal configuration updates the local registry immediately on every client, so connected rune glow and the Configure Portal status line stay accurate in multiplayer.
 
-**Dedicated servers:** Same rules apply — a connected player near the pens drives routing on their client; the headless server validates destinations via RPC and keeps its registry synced from world ZDO data.
+**Dedicated servers:** A connected player near the pens drives detection using their active zone. The headless server validates destinations via RPC, keeps its registry synced from world ZDO data, and can move animals by ZDO when they are not instantiated on the server process.
 
 **Offline pens:** With no players in active range, vanilla breeding and portal routing pause (expected).
 
