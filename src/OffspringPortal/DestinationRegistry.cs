@@ -8,6 +8,7 @@ public sealed class PortalRecord
 {
     public ZDOID Id;
     public Vector3 Position;
+    public Quaternion Rotation = Quaternion.identity;
     public PortalRole Role;
     public SpeciesType DeclaredSpecies;
     public string DeclaredSpeciesKey;
@@ -60,6 +61,23 @@ public static class DestinationRegistry
         record.AdultDestination = adultDestination;
     }
 
+    public static void RegisterSnapshot(ZDOID id, Vector3 position, Quaternion rotation)
+    {
+        if (id == ZDOID.None)
+        {
+            return;
+        }
+
+        if (!Portals.TryGetValue(id, out PortalRecord record))
+        {
+            record = new PortalRecord { Id = id };
+            Portals[id] = record;
+        }
+
+        record.Position = position;
+        record.Rotation = rotation;
+    }
+
     public static void Remove(ZDOID id)
     {
         Portals.Remove(id);
@@ -82,6 +100,7 @@ public static class DestinationRegistry
         if (zdo != null)
         {
             record.Position = zdo.GetPosition();
+            record.Rotation = zdo.GetRotation();
         }
     }
 
@@ -257,7 +276,8 @@ public static class DestinationRegistry
         }
 
         List<PortalRecord> specific = Portals.Values
-            .Where(p => p.Role == requiredRole
+            .Where(p => IsLivePortalRecord(p)
+                        && p.Role == requiredRole
                         && !SpeciesKey.IsAll(p.DeclaredSpeciesKey)
                         && SpeciesKey.PortalAcceptsSpecies(p.DeclaredSpeciesKey, speciesKey))
             .OrderBy(p => p.Id.ToString())
@@ -271,7 +291,8 @@ public static class DestinationRegistry
         }
 
         List<PortalRecord> catchAll = Portals.Values
-            .Where(p => p.Role == requiredRole
+            .Where(p => IsLivePortalRecord(p)
+                        && p.Role == requiredRole
                         && SpeciesKey.All.Equals(p.DeclaredSpeciesKey, System.StringComparison.OrdinalIgnoreCase))
             .OrderBy(p => p.Id.ToString())
             .ToList();
@@ -284,6 +305,34 @@ public static class DestinationRegistry
         }
 
         return false;
+    }
+
+    internal static bool IsLivePortalRecord(PortalRecord record)
+    {
+        if (record == null)
+        {
+            return false;
+        }
+
+        if (ZNet.instance != null && !ZNet.instance.IsServer())
+        {
+            return true;
+        }
+
+        if (ZDOMan.instance == null)
+        {
+            return true;
+        }
+
+        ZDO zdo = ZDOMan.instance.GetZDO(record.Id);
+        if (zdo == null || !zdo.IsValid())
+        {
+            return false;
+        }
+
+        bool isOffspringPrefab = zdo.GetPrefab() == PrefabNames.OffspringPortal.GetStableHashCode();
+        bool hasPortalRole = !string.IsNullOrEmpty(zdo.GetString(ZdoFields.PortalRole, string.Empty));
+        return isOffspringPrefab || hasPortalRole;
     }
 
     private static string NormalizeDeclaredSpeciesKey(PortalRole role, string declaredSpeciesKey)

@@ -29,7 +29,7 @@ public static class RoutingRpc
 
         ZRoutedRpc instance = ZRoutedRpc.instance;
         instance.Register<ZDOID, ZDOID, string>(RpcRequestJuvenileRoute, OnRequestJuvenileRoute);
-        instance.Register<ZDOID, ZDOID, ZDOID>(RpcExecuteJuvenileRoute, OnExecuteJuvenileRoute);
+        instance.Register<ZDOID, ZDOID, ZDOID, Vector3, float>(RpcExecuteJuvenileRoute, OnExecuteJuvenileRoute);
         instance.Register<ZDOID, ZDOID, string, bool, string>(RpcRequestEggRoute, OnRequestEggRoute);
         instance.Register<ZDOID, ZDOID, ZDOID>(RpcExecuteEggRoute, OnExecuteEggRoute);
         instance.Register<ZDOID, ZDOID, string>(RpcRequestAdultRoute, OnRequestAdultRoute);
@@ -98,23 +98,41 @@ public static class RoutingRpc
             return;
         }
 
-        if (JuvenileTeleporter.TryMoveZdo(characterId, destination, sourcePortalId))
-        {
-            OffspringPortalPlugin.Log.LogInfo($"Moved {speciesKey} juvenile via ZDO to maturing portal at {destination.Position}.");
-        }
-
-        InvokeExecuteJuvenile(sender, characterId, sourcePortalId, destination.Id);
+        InvokeExecuteJuvenile(sender, characterId, sourcePortalId, destination);
     }
 
-    private static void OnExecuteJuvenileRoute(long sender, ZDOID characterId, ZDOID sourcePortalId, ZDOID destinationPortalId)
+    private static void OnExecuteJuvenileRoute(
+        long sender,
+        ZDOID characterId,
+        ZDOID sourcePortalId,
+        ZDOID destinationPortalId,
+        Vector3 destinationPosition,
+        float destinationRotationY)
     {
         PortalRecord destination = ResolveDestinationRecord(destinationPortalId);
         if (destination == null)
         {
+            DestinationRegistry.RegisterSnapshot(
+                destinationPortalId,
+                destinationPosition,
+                Quaternion.Euler(0f, destinationRotationY, 0f));
+            destination = DestinationRegistry.Get(destinationPortalId);
+        }
+
+        if (destination == null)
+        {
+            OffspringPortalPlugin.Log.LogWarning(
+                $"Execute juvenile route failed: destination portal {destinationPortalId} is not registered.");
             return;
         }
 
-        JuvenilePortalRouter.ExecuteApprovedRoute(characterId, sourcePortalId, destination);
+        if (JuvenilePortalRouter.ExecuteApprovedRoute(characterId, sourcePortalId, destination))
+        {
+            return;
+        }
+
+        OffspringPortalPlugin.Log.LogWarning(
+            $"Execute juvenile route failed for creature {characterId} -> {destinationPortalId} at {destinationPosition}.");
     }
 
     private static void OnRequestEggRoute(
@@ -200,11 +218,6 @@ public static class RoutingRpc
             return;
         }
 
-        if (JuvenileTeleporter.TryMoveZdo(characterId, destination, sourcePortalId))
-        {
-            OffspringPortalPlugin.Log.LogInfo($"Moved {speciesKey} adult via ZDO to {source.AdultDestination} portal at {destination.Position}.");
-        }
-
         InvokeExecuteAdult(sender, characterId, sourcePortalId, destination.Id);
     }
 
@@ -236,13 +249,46 @@ public static class RoutingRpc
         return true;
     }
 
-    private static void InvokeExecuteJuvenile(long sender, ZDOID characterId, ZDOID sourcePortalId, ZDOID destinationId)
+    private static void InvokeExecuteJuvenile(
+        long sender,
+        ZDOID characterId,
+        ZDOID sourcePortalId,
+        PortalRecord destination)
     {
-        ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcExecuteJuvenileRoute, characterId, sourcePortalId, destinationId);
+        if (destination == null)
+        {
+            return;
+        }
+
+        DestinationRegistry.RefreshPortalPosition(destination);
+        Vector3 destinationPosition = destination.Position;
+        float destinationRotationY = destination.Rotation.eulerAngles.y;
+        ZDO destinationZdo = ZDOMan.instance?.GetZDO(destination.Id);
+        if (destinationZdo != null)
+        {
+            destinationPosition = destinationZdo.GetPosition();
+            destinationRotationY = destinationZdo.GetRotation().eulerAngles.y;
+        }
+
+        ZRoutedRpc.instance.InvokeRoutedRPC(
+            sender,
+            RpcExecuteJuvenileRoute,
+            characterId,
+            sourcePortalId,
+            destination.Id,
+            destinationPosition,
+            destinationRotationY);
         long owner = ZDOMan.instance?.GetZDO(characterId)?.GetOwner() ?? 0L;
         if (owner != 0L && owner != sender)
         {
-            ZRoutedRpc.instance.InvokeRoutedRPC(owner, RpcExecuteJuvenileRoute, characterId, sourcePortalId, destinationId);
+            ZRoutedRpc.instance.InvokeRoutedRPC(
+                owner,
+                RpcExecuteJuvenileRoute,
+                characterId,
+                sourcePortalId,
+                destination.Id,
+                destinationPosition,
+                destinationRotationY);
         }
     }
 
@@ -373,6 +419,7 @@ public static class RoutingRpc
         ZDO zdo = ZDOMan.instance.GetZDO(destinationPortalId);
         if (zdo == null)
         {
+            DestinationRegistry.Remove(destinationPortalId);
             return null;
         }
 

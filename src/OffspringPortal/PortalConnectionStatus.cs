@@ -144,7 +144,15 @@ public static class PortalConnectionStatus
 
     private static void EnsureRegistryForStatus(ZDOID portalId)
     {
-        PortalHelper.SyncRegistryFromAllPortalZdos();
+        if (ZNet.instance != null && ZNet.instance.IsServer())
+        {
+            PortalHelper.SyncRegistryFromAllPortalZdos();
+        }
+        else
+        {
+            PortalHelper.MergeRegistryFromLoadedPortals();
+        }
+
         if (portalId == ZDOID.None || ZDOMan.instance == null)
         {
             return;

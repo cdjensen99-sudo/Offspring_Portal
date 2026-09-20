@@ -8,7 +8,7 @@ Build a portal, name it, configure it once, and let the mod handle the logistics
 
 **Offspring portals are for animal automation only** — players cannot travel through them. They are excluded from portal travel mod lists and map-based portal UIs.
 
-**Current version:** 1.2.0 · **Valheim 1.0.x final release**
+**Current version:** 1.2.1 · **Valheim 1.0.x final release**
 
 ---
 
@@ -39,9 +39,9 @@ When reporting a problem, include your mod version, single-player or multiplayer
 - **Custom portal names** — Shown on hover for easy identification
 - **Juvenile follow command** — Press **E** on tamed juveniles to toggle Follow / Stay (configurable)
 - **Breeding cap warning** — Hover warning when a maturing pen sits inside vanilla breeding cap radius
-- **Distant pen support** — Teleports wait for unloaded zones before giving up
+- **Distant pen support** — Juveniles teleport to maturing pens even when that chunk is not loaded on your client
 - **Multiplayer support** — Active-zone routing with server-validated destinations; all players need the mod installed
-- **Connected portal glow** — Runes light up when routing is ready; status on hover and in config UI
+- **Connected portal glow** — Runes light up when routing is ready; status on hover and in config UI (synced from server on dedicated)
 - **Portal network compatible** — Offspring portals are excluded from player portal travel lists (XPortal, map portals, and similar mods)
 - **Players cannot travel** — Offspring portals are for animals only, not player teleportation
 - **Configurable** — Scan range, mate draw, discovery radius, intervals, cooldowns, and more via `offspringportal.mod.cfg`
@@ -330,9 +330,11 @@ Install on **server/host and every client**. Everyone needs the mod to see the c
 
 **Routing:** Destination registry and round-robin selection are server-authoritative. **Detection** runs on whichever peer has the portal and animals in their **active zone** — any player staying near pens can keep automation working while others explore. You do **not** need the host specifically to stand at the pens (same as vanilla breeding).
 
+**Server registry sync:** On dedicated servers, the host pushes its full portal list to clients when you join and whenever portals are placed, configured, or destroyed. You do **not** need to visit distant maturing pens first for breeders to show **Connected** or for routing to use the correct destination.
+
 **Client config sync:** Portal configuration updates the local registry immediately on every client, so connected rune glow and the Configure Portal status line stay accurate in multiplayer.
 
-**Dedicated servers:** A connected player near the pens drives detection using their active zone. The headless server validates destinations via RPC, keeps its registry synced from world ZDO data, and can move animals by ZDO when they are not instantiated on the server process.
+**Dedicated servers:** A connected player near the pens drives detection using their active zone. The headless server validates destinations via RPC, scans all portal ZDOs in the world save, and sends destination position/rotation to clients when executing teleports to unloaded chunks. Destroyed portals are removed from the server registry so juveniles do not route to dismantled sites.
 
 **Offline pens:** With no players in active range, vanilla breeding and portal routing pause (expected).
 

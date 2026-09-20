@@ -354,7 +354,7 @@ public static class PortalRpc
 
         DestinationRegistry.RefreshCapWarnings();
 
-
+        PortalRegistrySync.BroadcastFromServer();
 
         OPTeleportWorld portal = FindPortal(portalId);
 

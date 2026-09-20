@@ -121,7 +121,9 @@ public static class JuvenilePortalRouter
             }
 
             string speciesKey = SpeciesHelper.GetJuvenileSpeciesKey(character);
-            if (JuvenileTeleporter.TryExecuteApproved(character, destination, sourcePortal))
+            Vector3 targetPos = JuvenileTeleporter.ResolveDestinationPosition(destination, sourcePortal);
+            bool allowStoredHeight = ZNetScene.instance == null || !ZNetScene.instance.IsAreaReady(targetPos);
+            if (JuvenileTeleporter.TryExecuteApproved(character, destination, sourcePortal, allowStoredHeight))
             {
                 OffspringPortalPlugin.Log.LogInfo(
                     $"Teleported {SpeciesKey.GetDisplayName(speciesKey)} juvenile to maturing portal at {destination.Position}.");

@@ -108,7 +108,23 @@ public static class PortalHelper
 
     public static void SyncRegistryFromAllPortalZdos()
     {
+        if (ZDOMan.instance == null)
+        {
+            return;
+        }
+
+        if (ZNet.instance != null && ZNet.instance.IsServer())
+        {
+            DestinationRegistry.Clear();
+        }
+
+        RebuildRegistryFromLoadedPortals();
         RebuildRegistryFromAllPortalZdos();
+    }
+
+    public static void MergeRegistryFromLoadedPortals()
+    {
+        RebuildRegistryFromLoadedPortals();
     }
 
     public static void SyncRegistryFromZdo(ZDO zdo)
@@ -129,6 +145,11 @@ public static class PortalHelper
         string speciesKey = zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty);
         AdultDestination adultDestination = PortalRoleCatalog.GetAdultDestination(zdo);
         DestinationRegistry.RegisterOrUpdate(zdo.m_uid, zdo.GetPosition(), role, speciesKey, adultDestination);
+        PortalRecord record = DestinationRegistry.Get(zdo.m_uid);
+        if (record != null)
+        {
+            record.Rotation = zdo.GetRotation();
+        }
     }
 
     public static bool IsWorldReady()
@@ -151,12 +172,25 @@ public static class PortalHelper
                 MigrateAllLegacyPortals();
             }
 
-            DestinationRegistry.Clear();
+            if (ZNet.instance != null && ZNet.instance.IsServer())
+            {
+                DestinationRegistry.Clear();
+            }
+
             RebuildRegistryFromLoadedPortals();
             RebuildRegistryFromAllPortalZdos();
             BreedableSpeciesRegistry.RefreshFromAllBreeders();
             DestinationRegistry.RefreshCapWarnings();
             LogRegistryState("rebuilt");
+
+            if (ZNet.instance != null && !ZNet.instance.IsServer())
+            {
+                PortalRegistrySync.RequestIfClient();
+            }
+            else if (ZNet.instance != null && ZNet.instance.IsServer())
+            {
+                PortalRegistrySync.BroadcastFromServer();
+            }
         }
         catch (System.Exception ex)
         {

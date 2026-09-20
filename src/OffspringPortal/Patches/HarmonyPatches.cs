@@ -87,6 +87,7 @@ public static class GameStartPatch
     private static void Postfix()
     {
         PortalRpc.Register();
+        PortalRegistrySync.Register();
         RoutingRpc.Register();
         JuvenileFollowRpc.Register();
         OffspringPortalRuntime.Instance.StartCoroutine(DeferredWorldSetup());
@@ -120,6 +121,7 @@ public static class PlayerSpawnedPatch
         OffspringPortalPrefabs.EnsureRegistered();
         OffspringPortalPrefabs.EnsurePieceRegistered();
         PortalHelper.RebuildRegistryFromWorld(includeLegacyMigration: false);
+        PortalRegistrySync.RequestIfClient();
     }
 }
 
@@ -144,6 +146,8 @@ public static class WearNTearOnPlacedPatch
         {
             PortalHelper.EnsurePortalInitialized(portal);
         }
+
+        PortalRegistrySync.BroadcastFromServer();
     }
 }
 
@@ -188,6 +192,17 @@ public static class WearNTearDestroyPatch
         {
             DestinationRegistry.Remove(zdo.m_uid);
         }
+    }
+
+    private static void Postfix(WearNTear __instance)
+    {
+        OPTeleportWorld portal = __instance.GetComponent<OPTeleportWorld>();
+        if (portal == null || !OffspringPortalPrefabs.IsOffspringPortal(portal))
+        {
+            return;
+        }
+
+        PortalRegistrySync.BroadcastFromServer();
     }
 }
 

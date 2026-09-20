@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.1
+- **Dedicated server/client desync fix** — the server kept the full portal registry while clients only saw portals in loaded chunks, so breeders could show “No Maturing portal” even when routing worked
+- **Server registry sync** — on join and when portals are placed, configured, or destroyed, the server pushes its portal list to clients so connection status and rune glow stay accurate for distant pens
+- **Unloaded destination teleports** — execute routing RPC now includes maturing portal position and rotation so juveniles can teleport when the destination chunk is not loaded on the client
+- **Stale portal cleanup** — destroyed or removed portals are pruned from the server registry so juveniles no longer route to dismantled portal sites
+- **Follow on dedicated** — juvenile follow (E) invokes on the creature owner peer when LetsGo is not installed
+
 ## 1.2.0
 - **Valheim 1.0.x final release** — validated on solo, hosted, and dedicated servers
 - **Dedicated server routing** — portal scans honor connected players' active zones (not the headless server origin)

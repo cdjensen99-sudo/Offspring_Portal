@@ -34,6 +34,15 @@ public static class PortalPlacement
             rotation = portal.transform.rotation;
             exitDistance = portal.m_exitDistance;
         }
+        else
+        {
+            PortalRecord record = DestinationRegistry.Get(portalId);
+            if (record != null)
+            {
+                center = record.Position;
+                rotation = record.Rotation;
+            }
+        }
 
         return center + rotation * Vector3.forward * exitDistance;
     }
@@ -51,6 +60,12 @@ public static class PortalPlacement
         if (portal != null)
         {
             return portal.transform.rotation;
+        }
+
+        PortalRecord record = DestinationRegistry.Get(portalId);
+        if (record != null)
+        {
+            return record.Rotation;
         }
 
         return fallbackPortal != null ? fallbackPortal.transform.rotation : Quaternion.identity;

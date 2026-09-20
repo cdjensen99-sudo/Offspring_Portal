@@ -125,8 +125,6 @@ public static class JuvenileTeleporter
             return false;
         }
 
-        zdo.SetOwner(ZDOMan.GetSessionID());
-
         OPTeleportWorld sourcePortal = null;
         GameObject sourceObject = ZNetScene.instance?.FindInstance(sourcePortalId);
         if (sourceObject != null)
