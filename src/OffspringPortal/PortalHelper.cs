@@ -113,11 +113,9 @@ public static class PortalHelper
             return;
         }
 
-        if (ZNet.instance != null && ZNet.instance.IsServer())
-        {
-            DestinationRegistry.Clear();
-        }
-
+        // Do not clear the registry here. Portal ZDOs outside currently loaded
+        // zones are not returned by the iterative scan, but their last-known
+        // records remain valid and are required for distant routing.
         RebuildRegistryFromLoadedPortals();
         RebuildRegistryFromAllPortalZdos();
     }
@@ -161,7 +159,7 @@ public static class PortalHelper
     {
         if (!IsWorldReady())
         {
-            OffspringPortalPlugin.Log?.LogDebug("Skipping portal registry rebuild — ZNetScene or ZDOMan not ready.");
+            OPLog.Debug("Skipping portal registry rebuild — ZNetScene or ZDOMan not ready.");
             return;
         }
 
@@ -194,7 +192,7 @@ public static class PortalHelper
         }
         catch (System.Exception ex)
         {
-            OffspringPortalPlugin.Log?.LogError($"Portal registry rebuild failed: {ex}");
+            OPLog.Error($"Portal registry rebuild failed: {ex}");
         }
     }
 
@@ -212,35 +210,11 @@ public static class PortalHelper
 
     private static void LogRegistryState(string reason)
     {
-        int breeders = 0;
-        int maturing = 0;
-        int farm = 0;
-        int cull = 0;
-        int eggCollectors = 0;
+        DiagnosticLog.Info($"Portal registry {reason}: {DestinationRegistry.BuildSummaryCounts()}.");
         foreach (PortalRecord record in DestinationRegistry.GetAll())
         {
-            switch (record.Role)
-            {
-                case PortalRole.Maturing:
-                    maturing++;
-                    break;
-                case PortalRole.Farm:
-                    farm++;
-                    break;
-                case PortalRole.Cull:
-                    cull++;
-                    break;
-                case PortalRole.EggCollector:
-                    eggCollectors++;
-                    break;
-                default:
-                    breeders++;
-                    break;
-            }
+            DiagnosticLog.Info(DestinationRegistry.FormatPortalRecord(record));
         }
-
-        OffspringPortalPlugin.Log.LogInfo(
-            $"Portal registry {reason}: {breeders} breeder(s), {maturing} maturing, {farm} farm, {cull} cull, {eggCollectors} egg collector(s).");
     }
 
     private static void RebuildRegistryFromLoadedPortals()

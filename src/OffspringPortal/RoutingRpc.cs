@@ -7,13 +7,14 @@ public static class RoutingRpc
 {
     private const string RpcRequestJuvenileRoute = "OffspringPortal_RequestJuvenileRoute";
     private const string RpcExecuteJuvenileRoute = "OffspringPortal_ExecuteJuvenileRoute";
+    private const string RpcApplyJuvenileLiveTransfer = "OffspringPortal_ApplyJuvenileLiveTransfer";
     private const string RpcRequestEggRoute = "OffspringPortal_RequestEggRoute";
     private const string RpcExecuteEggRoute = "OffspringPortal_ExecuteEggRoute";
     private const string RpcRequestAdultRoute = "OffspringPortal_RequestAdultRoute";
     private const string RpcExecuteAdultRoute = "OffspringPortal_ExecuteAdultRoute";
 
     private static readonly Dictionary<ZDOID, float> ServerCooldowns = new Dictionary<ZDOID, float>();
-    private static bool registered;
+    private static ZRoutedRpc registeredInstance;
 
     public static bool CanSendRequests()
     {
@@ -22,19 +23,26 @@ public static class RoutingRpc
 
     public static void Register()
     {
-        if (registered || ZRoutedRpc.instance == null)
+        ZRoutedRpc instance = ZRoutedRpc.instance;
+        if (instance == null)
         {
             return;
         }
 
-        ZRoutedRpc instance = ZRoutedRpc.instance;
+        if (ReferenceEquals(registeredInstance, instance))
+        {
+            return;
+        }
+
         instance.Register<ZDOID, ZDOID, string>(RpcRequestJuvenileRoute, OnRequestJuvenileRoute);
         instance.Register<ZDOID, ZDOID, ZDOID, Vector3, float>(RpcExecuteJuvenileRoute, OnExecuteJuvenileRoute);
+        instance.Register<ZDOID, Vector3, float>(RpcApplyJuvenileLiveTransfer, OnApplyJuvenileLiveTransfer);
         instance.Register<ZDOID, ZDOID, string, bool, string>(RpcRequestEggRoute, OnRequestEggRoute);
         instance.Register<ZDOID, ZDOID, ZDOID>(RpcExecuteEggRoute, OnExecuteEggRoute);
         instance.Register<ZDOID, ZDOID, string>(RpcRequestAdultRoute, OnRequestAdultRoute);
         instance.Register<ZDOID, ZDOID, ZDOID>(RpcExecuteAdultRoute, OnExecuteAdultRoute);
-        registered = true;
+        registeredInstance = instance;
+        DiagnosticLog.Info("Routing RPC handlers registered on current ZRoutedRpc instance.");
     }
 
     public static void RequestJuvenileRoute(ZDOID characterId, ZDOID sourcePortalId, string speciesKey)
@@ -44,7 +52,29 @@ public static class RoutingRpc
             return;
         }
 
-        ZRoutedRpc.instance.InvokeRoutedRPC(RpcRequestJuvenileRoute, characterId, sourcePortalId, speciesKey ?? string.Empty);
+        Register();
+
+        if (ZNet.instance.IsServer())
+        {
+            OnRequestJuvenileRoute(0L, characterId, sourcePortalId, speciesKey ?? string.Empty);
+            return;
+        }
+
+        ZNetPeer serverPeer = ZNet.instance.GetServerPeer();
+        if (serverPeer == null || serverPeer.m_uid == 0L)
+        {
+            DiagnosticLog.Warning($"Cannot send juvenile route request: server peer unavailable for {characterId}.");
+            return;
+        }
+
+        DiagnosticLog.Verbose(
+            $"Sending juvenile route request to server {serverPeer.m_uid}: creature={characterId}, source={sourcePortalId}, species={speciesKey}.");
+        ZRoutedRpc.instance.InvokeRoutedRPC(
+            serverPeer.m_uid,
+            RpcRequestJuvenileRoute,
+            characterId,
+            sourcePortalId,
+            speciesKey ?? string.Empty);
     }
 
     public static void RequestEggRoute(
@@ -80,8 +110,19 @@ public static class RoutingRpc
 
     private static void OnRequestJuvenileRoute(long sender, ZDOID characterId, ZDOID sourcePortalId, string speciesKey)
     {
+        DiagnosticLog.Verbose(
+            $"Juvenile route request from peer {sender}: creature={characterId}, source={sourcePortalId}, species='{speciesKey}'.");
         if (!ZNet.instance.IsServer() || !TryBeginServerCooldown(characterId))
         {
+            return;
+        }
+
+        ZDO existingCreature = ZDOMan.instance?.GetZDO(characterId);
+        if (existingCreature != null
+            && existingCreature.GetBool(ZdoFields.Transported)
+            && !ModConfig.AllowRetransport.Value)
+        {
+            DiagnosticLog.Verbose($"Ignoring duplicate juvenile route request for already transferred creature {characterId}.");
             return;
         }
 
@@ -89,16 +130,52 @@ public static class RoutingRpc
 
         if (!DestinationRegistry.TryResolveMaturingDestination(speciesKey, out PortalRecord destination))
         {
-            OffspringPortalPlugin.Log.LogWarning($"No maturing portal registered for '{speciesKey}'.");
+            DestinationRegistry.LogMaturingResolutionFailure(speciesKey ?? string.Empty, "juvenile route request");
             return;
         }
 
-        if (TryExecuteJuvenileRouteLocally(characterId, sourcePortalId, destination))
+        long previousOwner = existingCreature?.GetOwner() ?? 0L;
+        DiagnosticLog.Verbose(
+            $"Server received juvenile route request: sender={sender}, creature={characterId}, source={sourcePortalId}, destination={destination.Id}, previousOwner={previousOwner}.");
+
+        if (JuvenileTeleporter.TryMoveZdo(characterId, destination, sourcePortalId))
+        {
+            Vector3 authoritativePosition = destination.Position;
+            ZDO movedCreature = ZDOMan.instance?.GetZDO(characterId);
+            if (movedCreature != null)
+            {
+                authoritativePosition = movedCreature.GetPosition();
+            }
+
+            float authoritativeRotationY = movedCreature?.GetRotation().eulerAngles.y ?? destination.Rotation.eulerAngles.y;
+            DiagnosticLog.Info(
+                $"Server-authoritative juvenile teleport completed: {characterId} -> {destination.Id} at {authoritativePosition}.");
+
+            SendLiveJuvenileTransfer(characterId, sender, previousOwner, authoritativePosition, authoritativeRotationY);
+
+            OPTeleportWorld sourcePortal = ResolvePortal(sourcePortalId);
+            sourcePortal?.PlayActivationEffect();
+            return;
+        }
+
+        DiagnosticLog.Warning(
+            $"Server could not authoritatively move juvenile {characterId} to destination {destination.Id}.");
+    }
+
+    private static void OnApplyJuvenileLiveTransfer(long sender, ZDOID characterId, Vector3 targetPosition, float targetRotationY)
+    {
+        if (ZNet.instance == null || ZNet.instance.IsServer())
         {
             return;
         }
 
-        InvokeExecuteJuvenile(sender, characterId, sourcePortalId, destination);
+        bool applied = JuvenileTeleporter.TryApplyLiveTransfer(
+            characterId,
+            targetPosition,
+            Quaternion.Euler(0f, targetRotationY, 0f));
+
+        DiagnosticLog.Verbose(
+            $"Received live juvenile transfer: creature={characterId}, target={targetPosition}, appliedToLocalCharacter={applied}, sender={sender}.");
     }
 
     private static void OnExecuteJuvenileRoute(
@@ -121,8 +198,17 @@ public static class RoutingRpc
 
         if (destination == null)
         {
-            OffspringPortalPlugin.Log.LogWarning(
-                $"Execute juvenile route failed: destination portal {destinationPortalId} is not registered.");
+            DiagnosticLog.Warning(
+                $"Execute juvenile route failed: destination portal {destinationPortalId} is not registered at {destinationPosition}.");
+            DiagnosticLog.LogPortalRegistry("execute juvenile route missing destination");
+            return;
+        }
+
+        ZDO creatureZdo = ZDOMan.instance?.GetZDO(characterId);
+        long owner = creatureZdo?.GetOwner() ?? 0L;
+        if (ZNet.instance != null && !ZNet.instance.IsServer() && owner != 0L && owner != ZNet.GetUID())
+        {
+            DiagnosticLog.Verbose($"Ignoring legacy juvenile execute RPC on non-owner client: creature={characterId}, owner={owner}.");
             return;
         }
 
@@ -131,7 +217,7 @@ public static class RoutingRpc
             return;
         }
 
-        OffspringPortalPlugin.Log.LogWarning(
+        DiagnosticLog.Warning(
             $"Execute juvenile route failed for creature {characterId} -> {destinationPortalId} at {destinationPosition}.");
     }
 
@@ -154,7 +240,9 @@ public static class RoutingRpc
 
         if (!EggRoutingResolver.TryResolveDestination(speciesInfo, out PortalRecord destination))
         {
-            OffspringPortalPlugin.Log.LogWarning($"No egg destination registered for '{speciesKey}'.");
+            DiagnosticLog.Warning(
+                $"No egg destination registered for '{speciesKey}' (dualPurpose={dualPurpose}, eggCollectorKey='{eggCollectorKey}'). " +
+                $"Registry: {DestinationRegistry.BuildSummaryCounts()}.");
             return;
         }
 
@@ -247,6 +335,46 @@ public static class RoutingRpc
 
         ServerCooldowns[subjectId] = now + ModConfig.TeleportCooldownSec.Value;
         return true;
+    }
+
+    private static void SendLiveJuvenileTransfer(
+        ZDOID characterId,
+        long sender,
+        long previousOwner,
+        Vector3 targetPosition,
+        float targetRotationY)
+    {
+        if (ZRoutedRpc.instance == null || ZNet.instance == null)
+        {
+            return;
+        }
+
+        HashSet<long> recipients = new HashSet<long>();
+        if (sender != 0L)
+        {
+            recipients.Add(sender);
+        }
+
+        if (previousOwner != 0L && previousOwner != ZNet.GetUID())
+        {
+            recipients.Add(previousOwner);
+        }
+
+        foreach (long peerId in recipients)
+        {
+            ZRoutedRpc.instance.InvokeRoutedRPC(
+                peerId,
+                RpcApplyJuvenileLiveTransfer,
+                characterId,
+                targetPosition,
+                targetRotationY);
+        }
+
+        if (recipients.Count > 0)
+        {
+            DiagnosticLog.Verbose(
+                $"Sent live juvenile transfer notification: creature={characterId}, recipients={string.Join(",", recipients)}, target={targetPosition}.");
+        }
     }
 
     private static void InvokeExecuteJuvenile(
@@ -419,7 +547,6 @@ public static class RoutingRpc
         ZDO zdo = ZDOMan.instance.GetZDO(destinationPortalId);
         if (zdo == null)
         {
-            DestinationRegistry.Remove(destinationPortalId);
             return null;
         }
 

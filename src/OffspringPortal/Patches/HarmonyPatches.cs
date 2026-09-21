@@ -107,9 +107,17 @@ public static class GameStartPatch
 
         OffspringPortalPrefabs.EnsureRegistered();
         PortalHelper.RebuildRegistryFromWorld();
+        DiagnosticLog.LogNetworkContext("world setup (pass 1)");
+        DiagnosticLog.LogPortalRegistry("world setup (pass 1)");
         yield return new WaitForSeconds(2f);
         OffspringPortalPrefabs.EnsureRegistered();
         PortalHelper.RebuildRegistryFromWorld();
+        DiagnosticLog.LogNetworkContext("world setup (pass 2)");
+        DiagnosticLog.LogPortalRegistry("world setup (pass 2)");
+        if (ZNet.instance != null && !ZNet.instance.IsServer())
+        {
+            PortalRegistrySync.RequestIfClient();
+        }
     }
 }
 
@@ -209,9 +217,17 @@ public static class WearNTearDestroyPatch
 [HarmonyPatch(typeof(Player), "FindHoverObject")]
 public static class PlayerFindHoverObjectPatch
 {
+    private static ZDOID lastLoggedHoverJuvenileId;
+    private static bool hasLastLoggedHoverJuvenileId;
+
     private static void Postfix(Player __instance, ref GameObject hover, ref Character hoverCreature)
     {
         if (!ModConfig.EnableFollowCommand.Value || JuvenileFollow.IsLetsGoLoaded())
+        {
+            return;
+        }
+
+        if (IsOffspringPortalObject(hover))
         {
             return;
         }
@@ -225,6 +241,34 @@ public static class PlayerFindHoverObjectPatch
 
         hover = juvenile.gameObject;
         hoverCreature = juvenile;
+
+        ZDO zdo = juvenile.GetNview()?.GetZDO();
+        if (zdo != null)
+        {
+            if (!hasLastLoggedHoverJuvenileId || lastLoggedHoverJuvenileId != zdo.m_uid)
+            {
+                hasLastLoggedHoverJuvenileId = true;
+                lastLoggedHoverJuvenileId = zdo.m_uid;
+                DiagnosticLog.Verbose(
+                    $"Hover override: '{juvenile.GetHoverName()}' is an eligible juvenile follow target (id={zdo.m_uid}).");
+            }
+        }
+    }
+
+    internal static bool IsOffspringPortalObject(GameObject gameObject)
+    {
+        if (gameObject == null)
+        {
+            return false;
+        }
+
+        if (OffspringPortalPrefabs.IsOffspringPortal(gameObject))
+        {
+            return true;
+        }
+
+        return gameObject.GetComponentInParent<OPTeleportWorld>() is { } portal
+            && OffspringPortalPrefabs.IsOffspringPortal(portal);
     }
 }
 
@@ -234,14 +278,35 @@ public static class PlayerJuvenileInteractPatch
 {
     private static bool Prefix(Player __instance, GameObject go, bool hold, bool alt)
     {
-        if (hold || alt || !ModConfig.EnableFollowCommand.Value || JuvenileFollow.IsLetsGoLoaded())
+        if (PlayerFindHoverObjectPatch.IsOffspringPortalObject(go))
         {
             return true;
         }
 
-        Character creature = JuvenileInteractHelper.FindJuvenileUnderCrosshair(__instance)
-            ?? __instance.GetHoverCreature();
+        if (hold || alt || !ModConfig.EnableFollowCommand.Value || JuvenileFollow.IsLetsGoLoaded()
+            || ModConfig.FollowInteractButton.Value != UnityEngine.KeyCode.E)
+        {
+            return true;
+        }
+
+        Character creature = null;
+        if (go != null)
+        {
+            creature = go.GetComponentInParent<Character>();
+        }
+
         if (creature == null || !creature.IsTamed() || !SpeciesHelper.IsEligibleJuvenile(creature))
+        {
+            creature = __instance.GetHoverCreature();
+        }
+
+        if (creature == null || !creature.IsTamed() || !SpeciesHelper.IsEligibleJuvenile(creature))
+        {
+            creature = JuvenileInteractHelper.FindJuvenileUnderCrosshair(__instance);
+        }
+
+        if (creature == null || creature.GetComponent<Tameable>() != null || !creature.IsTamed()
+            || !SpeciesHelper.IsEligibleJuvenile(creature))
         {
             return true;
         }
@@ -251,6 +316,7 @@ public static class PlayerJuvenileInteractPatch
 
         if (JuvenileFollow.TryCommand(creature, __instance, showMessage: true))
         {
+            DiagnosticLog.Verbose($"Player.Interact fallback consumed follow for '{creature.GetHoverName()}'.");
             return false;
         }
 
@@ -262,20 +328,42 @@ public static class PlayerJuvenileInteractPatch
 [HarmonyPriority(Priority.First)]
 public static class TameableInteractPatch
 {
-    private static void Prefix(Tameable __instance, ref bool ___m_commandable)
+    private static bool Prefix(Tameable __instance, Humanoid user, bool hold, bool alt, ref bool __result)
     {
-        if (!ModConfig.EnableFollowCommand.Value || JuvenileFollow.IsLetsGoLoaded())
+        Character character = __instance.GetComponent<Character>();
+
+        if (!ModConfig.EnableFollowCommand.Value || JuvenileFollow.IsLetsGoLoaded()
+            || ModConfig.FollowInteractButton.Value != UnityEngine.KeyCode.E)
         {
-            return;
+            return true;
         }
 
-        Character character = __instance.GetComponent<Character>();
         if (character == null || !SpeciesHelper.IsEligibleJuvenile(character) || !character.IsTamed())
         {
-            return;
+            return true;
         }
 
-        ___m_commandable = true;
+        if (hold || alt || !(user is Player player))
+        {
+            return true;
+        }
+
+        __instance.m_commandable = true;
+        JuvenileGroundSnapper.EnsureAttached(character);
+        JuvenileFollowController.EnsureAttached(character);
+
+        DiagnosticLog.Verbose($"Handling juvenile E interaction for '{character.GetHoverName()}' through Tameable.Interact.");
+
+        if (!JuvenileFollow.TryCommand(character, player, showMessage: true))
+        {
+            DiagnosticLog.Warning(
+                $"Juvenile E interaction failed to execute follow toggle for '{character.GetHoverName()}'.");
+            return true;
+        }
+
+        __result = true;
+        DiagnosticLog.Info($"Juvenile E interaction consumed for '{character.GetHoverName()}'.");
+        return false;
     }
 }
 

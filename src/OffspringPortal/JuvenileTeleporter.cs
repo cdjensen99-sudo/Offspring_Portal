@@ -26,12 +26,12 @@ public static class JuvenileTeleporter
 
         if (TryExecuteApproved(juvenile, destination, sourcePortal, allowStoredHeight: true))
         {
-            OffspringPortalPlugin.Log.LogInfo(
+            DiagnosticLog.Info(
                 $"Cross-zone teleport of {SpeciesCatalog.GetDisplayName(SpeciesHelper.GetJuvenileSpecies(juvenile))} to {targetPos}.");
             return true;
         }
 
-        OffspringPortalPlugin.Log.LogInfo(
+        DiagnosticLog.Info(
             $"Deferring teleport of {SpeciesCatalog.GetDisplayName(SpeciesHelper.GetJuvenileSpecies(juvenile))} until pen zone loads.");
 
         return ZNet.instance.IsServer()
@@ -115,13 +115,15 @@ public static class JuvenileTeleporter
         }
 
         ZDO zdo = ZDOMan.instance.GetZDO(characterId);
-        if (zdo == null)
+        if (zdo == null || !zdo.IsValid())
         {
+            DiagnosticLog.Verbose($"Authoritative juvenile move failed: creature ZDO {characterId} is unavailable or invalid.");
             return false;
         }
 
         if (zdo.GetBool(ZdoFields.Transported) && !ModConfig.AllowRetransport.Value)
         {
+            DiagnosticLog.Verbose($"Authoritative juvenile move skipped: {characterId} is already marked transported.");
             return false;
         }
 
@@ -132,16 +134,53 @@ public static class JuvenileTeleporter
             sourcePortal = sourceObject.GetComponent<OPTeleportWorld>();
         }
 
+        DestinationRegistry.RefreshPortalPosition(destination);
         Vector3 targetPos = PortalPlacement.GetExitPosition(destination.Id, sourcePortal);
         Quaternion targetRot = PortalPlacement.GetExitRotation(destination.Id, sourcePortal);
-        if (JuvenilePlacement.TryGetFloorPosition(targetPos, out Vector3 grounded))
+
+        bool areaReady = ZNetScene.instance != null && ZNetScene.instance.IsAreaReady(targetPos);
+        if (areaReady && JuvenilePlacement.TryGetFloorPosition(targetPos, out Vector3 grounded))
         {
             targetPos = grounded;
         }
 
+        long previousOwner = zdo.GetOwner();
+        zdo.SetOwner(ZNet.GetUID());
+
         zdo.SetPosition(targetPos);
         zdo.SetRotation(targetRot);
         zdo.Set(ZdoFields.Transported, true);
+        zdo.Set(ZDOVars.s_velHash, Vector3.zero);
+        zdo.Set(ZDOVars.s_bodyVelHash, Vector3.zero);
+        zdo.Set(ZDOVars.s_bodyAVelHash, Vector3.zero);
+        ZDOMan.instance.ForceSendZDO(characterId);
+
+        GameObject instance = ZNetScene.instance?.FindInstance(characterId);
+        Character character = instance != null ? instance.GetComponent<Character>() : null;
+        if (character != null)
+        {
+            JuvenilePlacement.ApplyLivePosition(character, targetPos, targetRot);
+            JuvenileGroundSnapper.EnsureAttached(character);
+            JuvenileFollowController.EnsureAttached(character);
+        }
+
+        DiagnosticLog.Verbose(
+            $"Authoritative juvenile ZDO move: creature={characterId}, destination={destination.Id}, target={targetPos}, areaReady={areaReady}, instantiatedOnServer={character != null}, previousOwner={previousOwner}.");
+        return true;
+    }
+
+    public static bool TryApplyLiveTransfer(ZDOID characterId, Vector3 targetPos, Quaternion targetRot)
+    {
+        GameObject instance = ZNetScene.instance?.FindInstance(characterId);
+        Character character = instance != null ? instance.GetComponent<Character>() : null;
+        if (character == null)
+        {
+            return false;
+        }
+
+        JuvenilePlacement.ApplyLivePosition(character, targetPos, targetRot);
+        JuvenileGroundSnapper.EnsureAttached(character);
+        JuvenileFollowController.EnsureAttached(character);
         return true;
     }
 

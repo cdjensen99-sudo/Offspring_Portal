@@ -1,5 +1,23 @@
 # Changelog
 
+**Valheim 1.0.x production release.** See below for prior version history.
+
+## 1.3.0
+- **Valheim 1.0.x final release** — production-ready build validated on solo, hosted, and dedicated servers
+- **Dedicated registry fix** — portal records in unloaded zones are no longer wiped during incremental server sync; distant maturing portals stay routable
+- **Server-authoritative juvenile teleports** — the server moves the juvenile ZDO first, then notifies source client(s) to move the live creature (no false client-only success)
+- **Follow (E) fix** — follow is handled through `Tameable.Interact`, which is how Valheim dispatches E on tamed creatures; portal Configure is no longer blocked by juvenile hover
+- **Dedicated RPC routing** — juvenile route and follow requests are sent explicitly to the server peer; follow executes on the creature ZDO owner only
+- **Egg Collector round-robin** — hen and dual-purpose eggs alternate across every matching Egg Collector portal, including collectors configured with different hen key aliases (`Egg:Chicken`, `Hen`, etc.)
+- **Egg Collector config at distant bases** — the Receives dropdown includes egg types already configured on other Egg Collector portals, not only species discovered from loaded hens near breeders
+- **Diagnostics** — server/client log prefixes via `OPLog`; `[Diagnostics] VerboseLogging` is off by default
+
+## 1.2.2
+- **Diagnostic logging** — verbose routing, registry sync, portal scan, and follow logs (configurable under `[Diagnostics] VerboseLogging`)
+- **Maturing resolution failures** — warnings now include a full registry snapshot listing every maturing portal and whether its ZDO is live
+- **Follow troubleshooting** — logs follow RPC sender/owner peers, execute failures, and LetsGo detection at startup
+- **Dedicated scan visibility** — logs when breeder portal scans are skipped because the pen is outside all players' active zones
+
 ## 1.2.1
 - **Dedicated server/client desync fix** — the server kept the full portal registry while clients only saw portals in loaded chunks, so breeders could show “No Maturing portal” even when routing worked
 - **Server registry sync** — on join and when portals are placed, configured, or destroyed, the server pushes its portal list to clients so connection status and rune glow stay accurate for distant pens

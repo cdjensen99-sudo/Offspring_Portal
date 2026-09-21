@@ -5,9 +5,41 @@ namespace OffspringPortal;
 
 public static class JuvenileInteractHelper
 {
-    private static readonly int InteractMask = LayerMask.GetMask(
-        "item", "piece", "piece_nonsolid", "Default", "static_solid", "Default_small",
-        "character", "character_net", "terrain", "vehicle");
+    private static ZDOID lastLoggedResolvedJuvenileId;
+    private static bool hasLastLoggedResolvedJuvenileId;
+
+    private static void LogResolvedJuvenile(Character juvenile, string source, float? distance = null)
+    {
+        if (juvenile == null)
+        {
+            return;
+        }
+
+        ZDO zdo = juvenile.GetNview()?.GetZDO();
+        if (zdo == null)
+        {
+            return;
+        }
+
+        if (hasLastLoggedResolvedJuvenileId && lastLoggedResolvedJuvenileId == zdo.m_uid)
+        {
+            return;
+        }
+
+        hasLastLoggedResolvedJuvenileId = true;
+        lastLoggedResolvedJuvenileId = zdo.m_uid;
+
+        if (distance.HasValue)
+        {
+            DiagnosticLog.Verbose(
+                $"Crosshair search resolved '{juvenile.GetHoverName()}' from {source} at {distance.Value:F2}m (id={zdo.m_uid}).");
+        }
+        else
+        {
+            DiagnosticLog.Verbose(
+                $"Crosshair search resolved '{juvenile.GetHoverName()}' from {source} (id={zdo.m_uid}).");
+        }
+    }
 
     public static Character FindJuvenileUnderCrosshair(Player player, float maxDistance = 6f)
     {
@@ -24,11 +56,27 @@ public static class JuvenileInteractHelper
             return null;
         }
 
+        Character hovered = player.GetHoverCreature();
+        if (IsValidCandidate(hovered, player, juvenilesOnly))
+        {
+            float distance = Vector3.Distance(player.m_eye.position, hovered.transform.position);
+            if (distance <= maxDistance + 0.5f)
+            {
+                LogResolvedJuvenile(hovered, "Player.GetHoverCreature()");
+                return hovered;
+            }
+        }
+
         Vector3 origin = GameCamera.instance.transform.position;
         Vector3 direction = GameCamera.instance.transform.forward;
-        Vector3 eye = player.m_eye.position;
 
-        RaycastHit[] hits = Physics.RaycastAll(origin, direction, 50f, InteractMask);
+        RaycastHit[] hits = Physics.RaycastAll(
+            origin,
+            direction,
+            Mathf.Max(0.1f, maxDistance),
+            Physics.AllLayers,
+            QueryTriggerInteraction.Ignore);
+
         Character best = null;
         float bestDistance = maxDistance;
 
@@ -39,34 +87,13 @@ public static class JuvenileInteractHelper
                 continue;
             }
 
-            if (hit.collider.attachedRigidbody != null
-                && hit.collider.attachedRigidbody.gameObject == player.gameObject)
+            Character character = GetCharacterFromCollider(hit.collider);
+            if (!IsValidCandidate(character, player, juvenilesOnly))
             {
                 continue;
             }
 
-            Character character = hit.collider.attachedRigidbody != null
-                ? hit.collider.attachedRigidbody.GetComponent<Character>()
-                : hit.collider.GetComponentInParent<Character>();
-
-            if (character == null
-                || character.IsPlayer()
-                || !character.IsTamed())
-            {
-                continue;
-            }
-
-            if (juvenilesOnly && !SpeciesHelper.IsEligibleJuvenile(character))
-            {
-                continue;
-            }
-
-            if (!juvenilesOnly && character.GetComponent<Tameable>() == null)
-            {
-                continue;
-            }
-
-            float distance = Vector3.Distance(eye, hit.point);
+            float distance = Vector3.Distance(player.m_eye.position, hit.point);
             if (distance <= bestDistance)
             {
                 best = character;
@@ -74,6 +101,47 @@ public static class JuvenileInteractHelper
             }
         }
 
+        if (best != null)
+        {
+            LogResolvedJuvenile(best, "raycast", bestDistance);
+        }
+
         return best;
+    }
+
+    private static Character GetCharacterFromCollider(Collider collider)
+    {
+        if (collider == null)
+        {
+            return null;
+        }
+
+        Character character = collider.GetComponentInParent<Character>();
+        if (character != null)
+        {
+            return character;
+        }
+
+        if (collider.attachedRigidbody != null)
+        {
+            character = collider.attachedRigidbody.GetComponentInParent<Character>();
+        }
+
+        return character;
+    }
+
+    private static bool IsValidCandidate(Character character, Player player, bool juvenilesOnly)
+    {
+        if (character == null || character == player || character.IsPlayer() || !character.IsTamed())
+        {
+            return false;
+        }
+
+        if (juvenilesOnly)
+        {
+            return SpeciesHelper.IsEligibleJuvenile(character);
+        }
+
+        return character.GetComponent<Tameable>() != null;
     }
 }

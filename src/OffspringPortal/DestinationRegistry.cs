@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using UnityEngine;
 
 namespace OffspringPortal;
@@ -21,7 +22,8 @@ public static class DestinationRegistry
     private static readonly Dictionary<string, int> MaturingRoundRobinIndex = new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
     private static readonly Dictionary<string, int> FarmRoundRobinIndex = new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
     private static int cullRoundRobinIndex;
-    private static int eggCollectorRoundRobinIndex;
+    private static readonly Dictionary<string, int> EggCollectorRoundRobinIndex =
+        new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
 
     public static void Clear()
     {
@@ -159,32 +161,88 @@ public static class DestinationRegistry
 
     public static bool TryResolveEggCollectorDestination(string eggCollectorKey, out PortalRecord destination)
     {
+        return TryResolveEggCollectorRoundRobin(
+            new[] { eggCollectorKey ?? string.Empty },
+            BuildEggCollectorRoundRobinKey(eggCollectorKey),
+            out destination);
+    }
+
+    public static bool TryResolveEggCollectorRoundRobin(
+        IReadOnlyList<string> eggCollectorKeys,
+        string roundRobinKey,
+        out PortalRecord destination)
+    {
         destination = null;
-        if (string.IsNullOrWhiteSpace(eggCollectorKey))
+        if (eggCollectorKeys == null || eggCollectorKeys.Count == 0)
         {
             return false;
         }
 
-        string normalizedEggKey = SpeciesKey.BuildEggCollectorKey(eggCollectorKey);
-        string speciesKey = SpeciesKey.IsEggCollectorKey(normalizedEggKey)
-            ? normalizedEggKey.Substring(SpeciesKey.EggPrefix.Length)
-            : SpeciesKey.Canonicalize(eggCollectorKey);
-
-        List<PortalRecord> matches = Portals.Values
-            .Where(p => p.Role == PortalRole.EggCollector
-                        && PortalAcceptsEggCollector(p.DeclaredSpeciesKey, normalizedEggKey, speciesKey))
-            .OrderBy(p => p.Id.ToString())
-            .ToList();
-
+        List<PortalRecord> matches = CollectMatchingEggCollectors(eggCollectorKeys);
         if (matches.Count == 0)
         {
             return false;
         }
 
-        destination = matches[eggCollectorRoundRobinIndex % matches.Count];
-        eggCollectorRoundRobinIndex++;
+        string key = string.IsNullOrWhiteSpace(roundRobinKey)
+            ? BuildEggCollectorRoundRobinKey(eggCollectorKeys[0])
+            : roundRobinKey;
+        destination = PickRoundRobin(key, matches, EggCollectorRoundRobinIndex);
         RefreshPortalPosition(destination);
-        return true;
+        return destination != null;
+    }
+
+    internal static List<PortalRecord> CollectMatchingEggCollectors(IReadOnlyList<string> eggCollectorKeys)
+    {
+        List<PortalRecord> matches = new List<PortalRecord>();
+        HashSet<string> seenPortalIds = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+        if (eggCollectorKeys == null)
+        {
+            return matches;
+        }
+
+        foreach (string eggCollectorKey in eggCollectorKeys)
+        {
+            if (string.IsNullOrWhiteSpace(eggCollectorKey))
+            {
+                continue;
+            }
+
+            foreach (PortalRecord record in GetMatchingEggCollectors(eggCollectorKey))
+            {
+                string portalId = record.Id.ToString();
+                if (seenPortalIds.Add(portalId))
+                {
+                    matches.Add(record);
+                }
+            }
+        }
+
+        matches.Sort((left, right) => string.Compare(left.Id.ToString(), right.Id.ToString(), System.StringComparison.Ordinal));
+        return matches;
+    }
+
+    private static List<PortalRecord> GetMatchingEggCollectors(string eggCollectorKey)
+    {
+        string normalizedEggKey = SpeciesKey.BuildEggCollectorKey(eggCollectorKey);
+        string speciesKey = SpeciesKey.IsEggCollectorKey(normalizedEggKey)
+            ? normalizedEggKey.Substring(SpeciesKey.EggPrefix.Length)
+            : SpeciesKey.Canonicalize(eggCollectorKey);
+
+        return Portals.Values
+            .Where(p => IsLivePortalRecord(p)
+                        && p.Role == PortalRole.EggCollector
+                        && PortalAcceptsEggCollector(p.DeclaredSpeciesKey, normalizedEggKey, speciesKey))
+            .OrderBy(p => p.Id.ToString())
+            .ToList();
+    }
+
+    private static string BuildEggCollectorRoundRobinKey(string eggCollectorKey)
+    {
+        string normalized = SpeciesKey.BuildEggCollectorKey(eggCollectorKey);
+        return string.IsNullOrWhiteSpace(normalized)
+            ? SpeciesKey.Canonicalize(eggCollectorKey)
+            : normalized;
     }
 
     public static bool HasCullReceiver()
@@ -232,6 +290,69 @@ public static class DestinationRegistry
     public static IEnumerable<PortalRecord> GetAll()
     {
         return Portals.Values;
+    }
+
+    public static string BuildSummaryCounts()
+    {
+        int breeders = 0;
+        int maturing = 0;
+        int farm = 0;
+        int cull = 0;
+        int eggCollectors = 0;
+        foreach (PortalRecord record in Portals.Values)
+        {
+            switch (record.Role)
+            {
+                case PortalRole.Maturing:
+                    maturing++;
+                    break;
+                case PortalRole.Farm:
+                    farm++;
+                    break;
+                case PortalRole.Cull:
+                    cull++;
+                    break;
+                case PortalRole.EggCollector:
+                    eggCollectors++;
+                    break;
+                default:
+                    breeders++;
+                    break;
+            }
+        }
+
+        return $"{breeders} breeder(s), {maturing} maturing, {farm} farm, {cull} cull, {eggCollectors} egg collector(s)";
+    }
+
+    public static string FormatPortalRecord(PortalRecord record)
+    {
+        if (record == null)
+        {
+            return "  (null portal record)";
+        }
+
+        string species = string.IsNullOrEmpty(record.DeclaredSpeciesKey)
+            ? "(none)"
+            : record.DeclaredSpeciesKey;
+        string live = IsLivePortalRecord(record) ? "live" : "missing-zdo";
+        return
+            $"  {record.Role} receives={species} id={record.Id} pos=({record.Position.x:F1}, {record.Position.y:F1}, {record.Position.z:F1}) [{live}]";
+    }
+
+    public static void LogMaturingResolutionFailure(string speciesKey, string context)
+    {
+        DiagnosticLog.Warning(
+            $"No maturing portal registered for '{speciesKey}' during {context}. Registry: {BuildSummaryCounts()}.");
+        foreach (PortalRecord record in Portals.Values.Where(p => p.Role == PortalRole.Maturing))
+        {
+            DiagnosticLog.Warning(FormatPortalRecord(record));
+        }
+
+        if (!Portals.Values.Any(p => p.Role == PortalRole.Maturing))
+        {
+            DiagnosticLog.Warning(
+                "No Maturing portals are registered on this game instance. Place/configure a Maturing portal and confirm the server log shows it after configuration.");
+        }
     }
 
     public static void RefreshCapWarnings()
@@ -324,8 +445,15 @@ public static class DestinationRegistry
             return true;
         }
 
+        // A portal ZDO can be absent while its zone is unloaded. Keep the record
+        // so distant maturing portals remain routable until actually destroyed.
         ZDO zdo = ZDOMan.instance.GetZDO(record.Id);
-        if (zdo == null || !zdo.IsValid())
+        if (zdo == null)
+        {
+            return true;
+        }
+
+        if (!zdo.IsValid())
         {
             return false;
         }

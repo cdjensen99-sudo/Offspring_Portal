@@ -11,6 +11,7 @@ public static class ModConfig
     public static ConfigEntry<float> DistantTeleportTimeoutSec;
     public static ConfigEntry<bool> AllowRetransport;
     public static ConfigEntry<bool> EnableFollowCommand;
+    public static ConfigEntry<UnityEngine.KeyCode> FollowInteractButton;
     public static ConfigEntry<bool> EnableCapWarning;
     public static ConfigEntry<float> MaturingAdultScanIntervalSec;
     public static ConfigEntry<float> DiscoveryScanRange;
@@ -18,6 +19,7 @@ public static class ModConfig
     public static ConfigEntry<float> MateDrawRange;
     public static ConfigEntry<float> MateDrawIntervalSec;
     public static ConfigEntry<float> MateDrawStopDistance;
+    public static ConfigEntry<bool> VerboseLogging;
 
     public static void Bind(ConfigFile config)
     {
@@ -33,6 +35,8 @@ public static class ModConfig
             "If true, a juvenile can use the portal more than once.");
         EnableFollowCommand = config.Bind("General", "EnableFollowCommand", true,
             "Press E on tamed juveniles to toggle follow/stay (Boar, Wolf, Lox, Hen, Asksvin, Moose).");
+        FollowInteractButton = config.Bind("General", "FollowInteractButton", UnityEngine.KeyCode.E,
+            "Keyboard button used to toggle follow/stay on an eligible juvenile. Default is E.");
         EnableCapWarning = config.Bind("General", "EnableCapWarning", true,
             "Show warning when a maturing portal is within species cap radius of a breeder portal.");
         MaturingAdultScanIntervalSec = config.Bind("General", "MaturingAdultScanIntervalSec", 30f,
@@ -47,6 +51,8 @@ public static class ModConfig
             "How often breeder portals scan for mate-draw pairing.");
         MateDrawStopDistance = config.Bind("Breeding", "MateDrawStopDistance", 2.5f,
             "How close mates move before stopping (should be within vanilla breeding range).");
+        VerboseLogging = config.Bind("Diagnostics", "VerboseLogging", false,
+            "Log detailed routing, registry sync, scanner, and follow diagnostics to BepInEx/LogOutput.log. Enable only while troubleshooting.");
     }
 
     public static float GetDiscoveryScanRange()

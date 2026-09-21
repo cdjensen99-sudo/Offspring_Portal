@@ -12,7 +12,7 @@ public sealed class OffspringPortalPlugin : BaseUnityPlugin
 {
     public const string PluginGuid = "offspringportal.mod";
     public const string PluginName = "Offspring Portal";
-    public const string PluginVersion = "1.2.1";
+    public const string PluginVersion = "1.3.0";
 
     internal static ManualLogSource Log;
     private Harmony harmony;
@@ -27,6 +27,10 @@ public sealed class OffspringPortalPlugin : BaseUnityPlugin
         harmony = new Harmony(PluginGuid);
         harmony.PatchAll(typeof(OffspringPortalPlugin).Assembly);
         Log.LogInfo($"{PluginName} {PluginVersion} loaded.");
+        DiagnosticLog.Info(
+            $"Diagnostics: VerboseLogging={(ModConfig.VerboseLogging.Value ? "on" : "off")}, " +
+            $"EnableFollowCommand={(ModConfig.EnableFollowCommand.Value ? "on" : "off")}, " +
+            $"LetsGoLoaded={(JuvenileFollow.IsLetsGoLoaded() ? "yes (OP follow disabled)" : "no")}.");
     }
 
     private void OnDestroy()

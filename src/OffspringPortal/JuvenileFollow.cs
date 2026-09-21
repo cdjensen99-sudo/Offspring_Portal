@@ -14,19 +14,29 @@ public static class JuvenileFollow
             return false;
         }
 
-        if (!ModConfig.EnableFollowCommand.Value || IsLetsGoLoaded())
+        if (!ModConfig.EnableFollowCommand.Value)
         {
+            DiagnosticLog.Verbose("Follow command ignored: EnableFollowCommand is off.");
+            return false;
+        }
+
+        if (IsLetsGoLoaded())
+        {
+            DiagnosticLog.Verbose("Follow command ignored: LetsGo mod is loaded.");
             return false;
         }
 
         if (!SpeciesHelper.IsEligibleJuvenile(character) || !character.IsTamed())
         {
+            DiagnosticLog.Verbose(
+                $"Follow command ignored for {character.GetHoverName()}: eligible={SpeciesHelper.IsEligibleJuvenile(character)}, tamed={character.IsTamed()}.");
             return false;
         }
 
         ZNetView nview = character.GetNview();
         if (nview == null || !nview.IsValid())
         {
+            DiagnosticLog.Verbose($"Follow command ignored for {character.GetHoverName()}: invalid ZNetView.");
             return false;
         }
 
@@ -35,9 +45,12 @@ public static class JuvenileFollow
 
         if (ZNet.instance.IsServer())
         {
+            DiagnosticLog.Verbose($"Follow command handled locally on server for {character.GetHoverName()}.");
             return ApplyFollowToggle(character, player, showMessage);
         }
 
+        DiagnosticLog.Verbose(
+            $"Follow command sending RPC for {character.GetHoverName()} (owner={nview.GetZDO()?.GetOwner() ?? 0L}).");
         JuvenileFollowRpc.RequestToggle(nview.GetZDO().m_uid, player.GetZDOID(), showMessage);
         return true;
     }

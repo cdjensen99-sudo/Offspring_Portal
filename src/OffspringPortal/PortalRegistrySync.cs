@@ -34,6 +34,7 @@ public static class PortalRegistrySync
             return;
         }
 
+        DiagnosticLog.Verbose("Requesting portal registry snapshot from server.");
         ZRoutedRpc.instance.InvokeRoutedRPC(RpcRequestRegistry);
     }
 
@@ -45,6 +46,8 @@ public static class PortalRegistrySync
         }
 
         string payload = BuildPayload();
+        int portalCount = CountPayloadEntries(payload);
+        DiagnosticLog.Info($"Broadcasting portal registry to all peers: {portalCount} portal(s).");
         ZRoutedRpc.instance.InvokeRoutedRPC(RpcSyncRegistry, payload);
     }
 
@@ -55,7 +58,10 @@ public static class PortalRegistrySync
             return;
         }
 
-        ZRoutedRpc.instance.InvokeRoutedRPC(peerId, RpcSyncRegistry, BuildPayload());
+        string payload = BuildPayload();
+        DiagnosticLog.Verbose(
+            $"Sending portal registry snapshot to new peer {peerId}: {CountPayloadEntries(payload)} portal(s).");
+        ZRoutedRpc.instance.InvokeRoutedRPC(peerId, RpcSyncRegistry, payload);
     }
 
     private static void OnRequestRegistry(long sender)
@@ -65,7 +71,10 @@ public static class PortalRegistrySync
             return;
         }
 
-        ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcSyncRegistry, BuildPayload());
+        string payload = BuildPayload();
+        DiagnosticLog.Verbose(
+            $"Sending portal registry snapshot to peer {sender}: {CountPayloadEntries(payload)} portal(s).");
+        ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcSyncRegistry, payload);
     }
 
     private static void OnSyncRegistry(long sender, string payload)
@@ -120,6 +129,8 @@ public static class PortalRegistrySync
         DestinationRegistry.Clear();
         if (string.IsNullOrEmpty(payload))
         {
+            DiagnosticLog.Warning(
+                "Portal registry sync received empty payload from server. No portals are registered on this client.");
             BreedableSpeciesRegistry.RefreshFromAllBreeders();
             return;
         }
@@ -155,8 +166,27 @@ public static class PortalRegistrySync
 
         PortalHelper.MergeRegistryFromLoadedPortals();
         BreedableSpeciesRegistry.RefreshFromAllBreeders();
-        OffspringPortalPlugin.Log.LogInfo(
-            $"Portal registry synced from server: {portalCount} portal(s).");
+        DiagnosticLog.Info($"Portal registry synced from server: {portalCount} portal(s).");
+        DiagnosticLog.LogPortalRegistry("client sync from server");
+    }
+
+    private static int CountPayloadEntries(string payload)
+    {
+        if (string.IsNullOrEmpty(payload))
+        {
+            return 0;
+        }
+
+        int count = 1;
+        for (int i = 0; i < payload.Length; i++)
+        {
+            if (payload[i] == PortalSeparator)
+            {
+                count++;
+            }
+        }
+
+        return count;
     }
 
     private static bool TryParseEntry(string entry, out PortalRecord record)

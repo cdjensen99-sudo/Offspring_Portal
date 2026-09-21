@@ -48,6 +48,26 @@ public static class JuvenilePlacement
         return true;
     }
 
+    public static void ApplyLivePosition(Character character, Vector3 position, Quaternion rotation)
+    {
+        if (character == null)
+        {
+            return;
+        }
+
+        character.transform.position = position;
+        character.transform.rotation = rotation;
+
+        Rigidbody body = character.GetComponent<Rigidbody>();
+        if (body != null)
+        {
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+        }
+
+        character.SetLookDir(position, 0f);
+    }
+
     public static void ApplyPosition(Character character, Vector3 position, Quaternion rotation)
     {
         if (character == null)

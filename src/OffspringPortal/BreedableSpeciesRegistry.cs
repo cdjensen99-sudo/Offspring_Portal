@@ -96,10 +96,33 @@ public static class BreedableSpeciesRegistry
 
     public static IReadOnlyList<string> GetEggCollectorOptionKeys()
     {
-        return RegisteredSpecies.Values
-            .Where(species => species.IsDualPurposeEgg && !string.IsNullOrEmpty(species.EggCollectorKey))
-            .Select(species => species.EggCollectorKey)
-            .Distinct(System.StringComparer.OrdinalIgnoreCase)
+        HashSet<string> keys = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+
+        foreach (BreedableSpeciesInfo species in RegisteredSpecies.Values)
+        {
+            if (species.IsDualPurposeEgg && !string.IsNullOrEmpty(species.EggCollectorKey))
+            {
+                keys.Add(species.EggCollectorKey);
+            }
+        }
+
+        // Egg Collector portals can be configured away from breeder pens. Include egg types
+        // already configured on other collectors so distant bases can join round-robin.
+        foreach (PortalRecord portal in DestinationRegistry.GetAll())
+        {
+            if (portal.Role != PortalRole.EggCollector || string.IsNullOrWhiteSpace(portal.DeclaredSpeciesKey))
+            {
+                continue;
+            }
+
+            string eggKey = SpeciesKey.BuildEggCollectorKey(portal.DeclaredSpeciesKey);
+            if (!string.IsNullOrEmpty(eggKey))
+            {
+                keys.Add(eggKey);
+            }
+        }
+
+        return keys
             .OrderBy(key => SpeciesKey.GetEggCollectorDisplayName(key), System.StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
@@ -144,7 +167,6 @@ public static class BreedableSpeciesRegistry
 
     public static void RefreshFromAllBreeders()
     {
-        RegisteredSpecies.Clear();
         float range = ModConfig.GetDiscoveryScanRange();
         foreach (PortalRecord breeder in DestinationRegistry.GetBreederPortals())
         {

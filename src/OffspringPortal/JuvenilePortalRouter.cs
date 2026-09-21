@@ -77,6 +77,8 @@ public static class JuvenilePortalRouter
 
         if (ZNet.instance.IsServer())
         {
+            DiagnosticLog.Verbose(
+                $"Juvenile scan on server: {SpeciesKey.GetDisplayName(speciesKey)} at breeder {sourcePortalId}.");
             return TryRouteOnServer(
                 portal,
                 character,
@@ -91,9 +93,12 @@ public static class JuvenilePortalRouter
 
         if (!RoutingRpc.CanSendRequests())
         {
+            DiagnosticLog.Verbose("Juvenile route skipped on client: routing RPC unavailable.");
             return false;
         }
 
+        DiagnosticLog.Verbose(
+            $"Juvenile route client request: {SpeciesKey.GetDisplayName(speciesKey)} creature={characterId}, breeder={sourcePortalId}.");
         RoutingRpc.RequestJuvenileRoute(characterId, sourcePortalId, speciesKey);
         cooldowns[bodyId] = now + ModConfig.TeleportCooldownSec.Value;
         return false;
@@ -125,23 +130,28 @@ public static class JuvenilePortalRouter
             bool allowStoredHeight = ZNetScene.instance == null || !ZNetScene.instance.IsAreaReady(targetPos);
             if (JuvenileTeleporter.TryExecuteApproved(character, destination, sourcePortal, allowStoredHeight))
             {
-                OffspringPortalPlugin.Log.LogInfo(
+                DiagnosticLog.Info(
                     $"Teleported {SpeciesKey.GetDisplayName(speciesKey)} juvenile to maturing portal at {destination.Position}.");
                 PlayPortalActivation(sourcePortal);
                 return true;
             }
+
+            DiagnosticLog.Verbose(
+                $"Juvenile teleport TryExecuteApproved failed for {characterId}; areaReady={ZNetScene.instance?.IsAreaReady(targetPos) ?? false}.");
         }
 
         if (ZNet.instance != null
             && ZNet.instance.IsServer()
             && JuvenileTeleporter.TryMoveZdo(characterId, destination, sourcePortalId))
         {
-            OffspringPortalPlugin.Log.LogInfo(
+            DiagnosticLog.Info(
                 $"Teleported juvenile via ZDO to maturing portal at {destination.Position}.");
             PlayPortalActivation(sourcePortal);
             return true;
         }
 
+        DiagnosticLog.Verbose(
+            $"ExecuteApprovedRoute failed for creature {characterId}: character={(character != null)}, source={(sourcePortal != null)}, destination={destination.Id}.");
         return false;
     }
 
@@ -158,11 +168,10 @@ public static class JuvenilePortalRouter
     {
         if (!DestinationRegistry.TryResolveMaturingDestination(speciesKey, out PortalRecord destination))
         {
-            if (now - lastNoDestinationMessageTime > 5f)
+            if (DiagnosticLog.ShouldLogRateLimited(ref lastNoDestinationMessageTime, 5f))
             {
-                lastNoDestinationMessageTime = now;
                 string displayName = SpeciesKey.GetDisplayName(speciesKey);
-                OffspringPortalPlugin.Log.LogWarning($"No maturing portal registered for {displayName}.");
+                DestinationRegistry.LogMaturingResolutionFailure(speciesKey, "breeder scan");
                 Player local = Player.m_localPlayer;
                 if (local != null)
                 {
@@ -180,8 +189,8 @@ public static class JuvenilePortalRouter
             return true;
         }
 
-        OffspringPortalPlugin.Log.LogWarning(
-            $"Failed to teleport {SpeciesKey.GetDisplayName(speciesKey)} juvenile.");
+        DiagnosticLog.Warning(
+            $"Failed to teleport {SpeciesKey.GetDisplayName(speciesKey)} juvenile from breeder {sourcePortalId} to maturing {destination.Id}.");
         return false;
     }
 

@@ -8,7 +8,7 @@ Build a portal, name it, configure it once, and let the mod handle the logistics
 
 **Offspring portals are for animal automation only** — players cannot travel through them. They are excluded from portal travel mod lists and map-based portal UIs.
 
-**Current version:** 1.2.1 · **Valheim 1.0.x final release**
+**Current version:** 1.3.0 · **Valheim 1.0.x final release**
 
 ---
 
@@ -93,7 +93,7 @@ When a tamed egg layer lays an egg near a **Breeder** portal, routing depends on
 ### Egg Collector portal
 
 - Set **Type: Egg Collector** and choose the egg type (shown as **Egg Hen**, **Egg Penguin**, etc.).
-- Only **dual-purpose** egg layers appear in this dropdown.
+- The dropdown lists **dual-purpose** egg layers discovered near breeder portals, plus egg types already configured on other Egg Collector portals (so distant bases can configure collectors without local hens loaded).
 - Do **not** use Maturing for dual-purpose egg collection — use Egg Collector so recipe eggs and hatch eggs can be split across destinations.
 
 ---
@@ -381,3 +381,7 @@ Public repository: [github.com/cdjensen99-sudo/Offspring_Portal](https://github.
 ## Credits
 
 By **HW**
+
+### Special thanks
+
+- **[KydlDev](https://valheim.hexium.gg/teams/KydlDev)** — troubleshooting assistance and code revision for dedicated-server routing, registry sync, and follow behavior
