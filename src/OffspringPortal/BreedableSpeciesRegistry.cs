@@ -96,6 +96,11 @@ public static class BreedableSpeciesRegistry
 
     public static IReadOnlyList<string> GetEggCollectorOptionKeys()
     {
+        return GetEggCollectorOptionKeys(null);
+    }
+
+    public static IReadOnlyList<string> GetEggCollectorOptionKeys(string additionalSpeciesKey)
+    {
         HashSet<string> keys = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
 
         foreach (BreedableSpeciesInfo species in RegisteredSpecies.Values)
@@ -122,9 +127,25 @@ public static class BreedableSpeciesRegistry
             }
         }
 
+        AddEggCollectorOptionKey(keys, additionalSpeciesKey);
+
         return keys
             .OrderBy(key => SpeciesKey.GetEggCollectorDisplayName(key), System.StringComparer.OrdinalIgnoreCase)
             .ToList();
+    }
+
+    private static void AddEggCollectorOptionKey(HashSet<string> keys, string speciesKey)
+    {
+        if (string.IsNullOrWhiteSpace(speciesKey))
+        {
+            return;
+        }
+
+        string eggKey = SpeciesKey.BuildEggCollectorKey(speciesKey);
+        if (!string.IsNullOrEmpty(eggKey))
+        {
+            keys.Add(eggKey);
+        }
     }
 
     public static IReadOnlyList<string> GetMaturingOptionKeysWithFallback()

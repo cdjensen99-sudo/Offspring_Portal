@@ -393,7 +393,7 @@ public sealed class SpeciesConfigPanel
         speciesDropdown.ClearOptions();
         indexToSpeciesKey.Clear();
 
-        IReadOnlyList<string> optionKeys = BreedableSpeciesRegistry.GetEggCollectorOptionKeys();
+        IReadOnlyList<string> optionKeys = BreedableSpeciesRegistry.GetEggCollectorOptionKeys(currentEggKey);
         if (optionKeys.Count == 0)
         {
             indexToSpeciesKey[0] = string.Empty;
@@ -527,7 +527,8 @@ public sealed class SpeciesConfigPanel
 
         if (role == PortalRole.EggCollector)
         {
-            speciesDropdown.interactable = BreedableSpeciesRegistry.GetEggCollectorOptionKeys().Count > 0;
+            IReadOnlyList<string> eggOptions = BreedableSpeciesRegistry.GetEggCollectorOptionKeys(savedSpeciesKey);
+            speciesDropdown.interactable = eggOptions.Count > 1;
             PopulateEggCollectorDropdown(savedSpeciesKey);
             return;
         }

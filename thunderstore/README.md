@@ -1,50 +1,12 @@
 # Offspring Portal
 
-**Automate your breeding pens.** Offspring Portal teleports tamed juveniles and breedable eggs from your breeder area to distant maturing pens the moment they wander into range — keeping vanilla population caps from stalling production.
+**Version 1.4.0** — Valheim **1.0.x** production release (solo, hosted, and dedicated).
+
+**Automate your breeding pens.** Offspring Portal teleports tamed juveniles from your breeder area to distant maturing pens the moment they wander into range — keeping vanilla population caps from stalling production.
 
 **Press E on juveniles to toggle follow/stay** — useful for leading piglets and wolf cubs through portals or into pens before they grow up.
 
-Build a portal, name it, configure it once, and let the mod handle the logistics. **Species lists are built automatically** from tamed adults near your breeder portals — no need to manually register mod creatures.
-
-**Offspring portals are for animal automation only** — players cannot travel through them. They are excluded from portal travel mod lists and map-based portal UIs.
-
-**Current version:** 1.3.0 · **Valheim 1.0.x final release**
-
----
-
-## Support & feedback
-
-Bug reports, feature requests, and questions:
-
-- **[Team Extreme Discord](https://discord.gg/cCNG8xKXMn)** — setup help, example farms, and updates *(use your Offspring Portal channel)*
-- **[GitHub Issues — Offspring Portal](https://github.com/cdjensen99-sudo/Offspring_Portal/issues)**
-
-When reporting a problem, include your mod version, single-player or multiplayer, and other portal-related mods (e.g. XPortal).
-
----
-
-## Features
-
-- **Custom offspring portal** — Hammer build piece (20 Fine Wood, 10 Greydwarf Eyes, 2 Surtling Cores)
-- **Five portal roles** — Breeder, Maturing, Farm, Egg Collector, and Cull
-- **Dynamic species discovery** — Maturing, Farm, and Egg Collector dropdowns are built from tamed breedable adults near breeder portals (deduped per species)
-- **Mod creature support** — Any creature that passes the breedable criteria below is discovered automatically via prefab name
-- **Automatic juvenile routing** — Breeder portals send tamed juveniles to matching maturing pens
-- **Automatic egg routing** — Breeder portals send laid eggs to Egg Collector or maturing pens (see dual vs single-purpose below)
-- **Mate draw** — Fed, ready adults near breeder portals nudge toward same-species mates within breeding range
-- **Round-robin** — Multiple maturing/farm/cull/egg-collector portals of the same type share load automatically
-- **Optional adult routing** — Maturing portals can forward grown adults to Farm, Cull, or leave them (None)
-- **One shared Cull yard** — A single Cull portal handles every species
-- **Portal config UI** — Press **E** on a portal to set name, type, species, and destination
-- **Custom portal names** — Shown on hover for easy identification
-- **Juvenile follow command** — Press **E** on tamed juveniles to toggle Follow / Stay (configurable)
-- **Breeding cap warning** — Hover warning when a maturing pen sits inside vanilla breeding cap radius
-- **Distant pen support** — Juveniles teleport to maturing pens even when that chunk is not loaded on your client
-- **Multiplayer support** — Active-zone routing with server-validated destinations; all players need the mod installed
-- **Connected portal glow** — Runes light up when routing is ready; status on hover and in config UI (synced from server on dedicated)
-- **Portal network compatible** — Offspring portals are excluded from player portal travel lists (XPortal, map portals, and similar mods)
-- **Players cannot travel** — Offspring portals are for animals only, not player teleportation
-- **Configurable** — Scan range, mate draw, discovery radius, intervals, cooldowns, and more via `offspringportal.mod.cfg`
+Build a portal, name it, configure it once, and let the mod handle the logistics.
 
 ---
 
@@ -52,145 +14,44 @@ When reporting a problem, include your mod version, single-player or multiplayer
 
 | Portal type | What it does |
 |-------------|--------------|
-| **Breeder** | Sends juveniles and eggs out; discovers nearby breedable species; optional mate draw |
-| **Maturing** | Receives juveniles and single-purpose eggs; optionally forwards grown adults |
-| **Egg Collector** | Receives **dual-purpose** eggs only (e.g. hen eggs for recipes + hatching) |
+| **Breeder** | Sends juveniles out to matching maturing pens |
+| **Maturing** | Receives juveniles; optionally forwards grown adults |
 | **Farm** | Receives adults routed back from maturing pens (by species) |
 | **Cull** | One shared yard — receives adults marked for slaughter |
 
-**Juvenile follow:** With `EnableFollowCommand` on (default), look at a tamed juvenile and press **E** to toggle **Follow** / **Stay**.
+**Juvenile follow:** With `EnableFollowCommand` on (default), look at a tamed juvenile and press **E** to toggle **Follow** / **Stay**. Works on boar piglets, wolf cubs, and other juveniles still growing up.
 
-**Minimum setup:** 2 portals (Breeder + Maturing). Farm, Egg Collector, and Cull are optional.
+**Minimum setup:** 2 portals (Breeder + Maturing). Farm and Cull are optional when you want adult automation.
 
 **Build cost:** 20 Fine Wood · 10 Greydwarf Eyes · 2 Surtling Cores
 
 ---
 
-## Dynamic species discovery
+## Juvenile follow command
 
-Breeder portals scan for **tamed breedable adults** within discovery range and register each species **once** for the whole world (four boar pens still produce one **Boar** entry).
+When a juvenile is still growing (has not reached its adult form), you can command it directly:
 
-That list drives the **Receives** dropdown on Maturing and Farm portals, and the egg-type dropdown on Egg Collector portals. **All** is always available as a catch-all.
+1. Aim at the tamed juvenile — hover shows **Follow** or **Stay**
+2. Press **E** to toggle
+3. Press **E** again to make it stay
 
-Discovery refreshes every breeder scan, so placing a new mod creature at a breeder portal adds it to the lists without editing config files.
+This is separate from portal automation: follow helps you **move** juveniles; portals **teleport** them when they enter a breeder's scan radius.
 
----
-
-## Dual-purpose vs single-purpose eggs
-
-When a tamed egg layer lays an egg near a **Breeder** portal, routing depends on whether the egg item is also a **crafting ingredient**.
-
-| Egg type | How the mod decides | Where it goes |
-|----------|---------------------|---------------|
-| **Dual-purpose** | The egg item appears in at least one **enabled** ObjectDB crafting recipe (e.g. hen egg used in cooking) | **Egg Collector** portal for that egg type → if none, **Maturing** (species match → **All**) |
-| **Single-purpose** | The egg only hatches — it is **not** used in any enabled recipe (e.g. asksvin egg) | **Maturing** portal (species match → **All**) — same path as live-born juveniles |
-
-### Examples
-
-- **Hen (dual-purpose):** Route recipe eggs to an **Egg Collector → Egg Hen** pen (chest auto-collect, sorting, etc.). Eggs that miss the collector fall back to maturing pens for hatching. You can heat a subset at the maturing destination.
-- **Asksvin (single-purpose):** Eggs go straight to **Maturing → Asksvin** or **All** — no Egg Collector needed.
-
-### Egg Collector portal
-
-- Set **Type: Egg Collector** and choose the egg type (shown as **Egg Hen**, **Egg Penguin**, etc.).
-- The dropdown lists **dual-purpose** egg layers discovered near breeder portals, plus egg types already configured on other Egg Collector portals (so distant bases can configure collectors without local hens loaded).
-- Do **not** use Maturing for dual-purpose egg collection — use Egg Collector so recipe eggs and hatch eggs can be split across destinations.
+Toggle in config: `EnableFollowCommand` in `BepInEx/config/offspringportal.mod.cfg` (default: `true`).
 
 ---
 
-## For mod creators — what counts as breedable?
-
-Offspring Portal does **not** use a hardcoded species list. It discovers creatures at runtime from vanilla breeding components. If your modded animal works with the rules below, it should appear in portal dropdowns and route correctly without a patch from us.
-
-### Requirements (all paths)
-
-1. The creature must be **tamed**.
-2. It must be within **discovery scan range** of a placed **Breeder** portal (default: max of breeder scan range and mate draw range).
-3. The adult must have a **`Procreation`** component with **`m_offspring`** pointing at a valid prefab.
-
-### Live-birth species (boar, wolf, lox, asksvin calf, etc.)
-
-The offspring prefab chain must be:
+## How juveniles move
 
 ```
-Procreation.m_offspring → Character (juvenile)
-                              └── Growup component
-                                    └── m_grownPrefab (or m_altGrownPrefabs) → adult Character
-```
-
-If that chain resolves, the species is registered under the **adult prefab name** (vanilla names like `Boar`, `Wolf`, `Lox`, `Chicken` for hens, or your mod's prefab name).
-
-### Egg-laying species (hen, penguin, mod egg layers)
-
-The offspring prefab chain must be:
-
-```
-Procreation.m_offspring → egg prefab
-                              └── EggGrow component
-                                    └── m_grownPrefab → hatchling Character
-                                                          └── Growup → adult Character
-```
-
-- **Dual-purpose** if the egg `ItemDrop` is referenced by any enabled crafting recipe → eligible for **Egg Collector** routing.
-- **Single-purpose** if the egg is hatch-only → routes like a juvenile to **Maturing**.
-
-### Fallback registration
-
-If the full juvenile/egg chain cannot be resolved but the tamed adult has **`Procreation`** and is **not** itself a juvenile (`Growup` absent), the mod still registers the species using the **adult's normalized prefab name**. This helps mod creatures whose prefab references are incomplete in the asset bundle.
-
-### Species keys and matching
-
-- Keys come from **normalized prefab names** (clone suffixes stripped).
-- Vanilla aliases are mapped where known (e.g. prefab names containing **Hen** → **Chicken** / UI label **Hen**).
-- Portal **Receives** matching is case-insensitive; **All** accepts every discovered species.
-- Mod creatures typically appear under their **adult prefab name** in dropdowns.
-
-### Checklist for mod authors
-
-| Component | Live birth | Egg layer |
-|-----------|:----------:|:---------:|
-| `Procreation` on tamed adult | ✓ | ✓ |
-| `Procreation.m_offspring` set | ✓ | ✓ |
-| Juvenile `Character` + `Growup` | ✓ | — |
-| Egg prefab + `EggGrow` | — | ✓ |
-| Hatchling `Growup` → adult | ✓ | ✓ |
-| Egg in crafting recipe (optional) | — | dual-purpose only |
-
----
-
-## Mate draw (breeder portals)
-
-When **EnableMateDraw** is on (default), breeder portals periodically scan for **fed, ready-to-breed** tamed adults and nudge them toward the nearest eligible same-species mate until they are within vanilla breeding range.
-
-Mate draw applies when the animal:
-
-- Has **`Procreation`** and **`ReadyForProcreation()`** is true
-- Is **not hungry**, **not alerted**, **not following** the player
-- Is an **adult** (no `Growup` on self)
-- Has a resolvable species key
-
-Mate draw **stops** when animals are already within partner range, become pregnant, or no longer qualify.
-
-Defaults: **15 m** draw range, **1.5 s** scan interval, **2.5 m** stop distance (capped below vanilla partner range).
-
----
-
-## How juveniles and eggs move
-
-```
-Breeder Portal                         Maturing Portal
-  (at breeding pen)    ── juvenile ──►  (at grow-up pen)
-                       ── single-use egg ──►
-
-Breeder Portal                         Egg Collector Portal
-  (at breeding pen)    ── dual-purpose egg ──►  (collection / chest pen)
-                       └── fallback ──► Maturing (if no collector)
+Breeder Portal                    Maturing Portal
+  (at breeding pen)    ────────►   (at grow-up pen)
+  Role: Breeder                   Receives: Boar / Wolf / Hen / All …
 ```
 
 1. Place a portal at your **breeding area** → configure as **Breeder**
-2. Place a portal at your **grow-up area** → configure as **Maturing** → set **Receives** to a species (or **All**)
-3. For dual-purpose egg layers, add an **Egg Collector** portal → set **Receives** to **Egg Hen** (or the matching egg type)
-4. When a tamed juvenile or egg enters the breeder portal's scan radius, it teleports to the next matching destination (round-robin if you have several)
+2. Place a portal at your **grow-up area** → configure as **Maturing** → set **Receives** to a species (or All)
+3. When a tamed juvenile enters the breeder portal's scan radius, it teleports to the next available maturing pen for its species (round-robin if you have several)
 
 Hover any portal to see its **Name**, role, and warnings.
 
@@ -198,17 +59,19 @@ Hover any portal to see its **Name**, role, and warnings.
 
 ## Maturing pen destinations (adults)
 
-Each **Maturing** portal has one **Receives** species (or **All**) and one **Destination** for adults that grow up on that portal.
+Each **Maturing** portal has one **Receives** species (or All) and one **Destination** for adults that grow up on that portal. The mod applies that destination to every adult of the species that portal receives.
+
+When juveniles grow up, the maturing portal can optionally move adults elsewhere:
 
 | Destination | Behavior |
 |-------------|----------|
-| **None** | Adults stay on the maturing pen *(default)* |
-| **Farm** | Adults teleport to a **Farm** portal matching their species (or **All**) |
+| **None** | Adults stay on the maturing pen *(default — great for a simple 2-portal setup)* |
+| **Farm** | Adults teleport to a **Farm** portal matching their species (or All) |
 | **Cull** | Adults teleport to your **Cull** yard — one Cull portal serves every species |
 
 If Destination is Farm or Cull but no receiver portal exists yet, you'll see a **yellow hover warning** and adults won't teleport until you place one.
 
-**Mixed species, different outcomes:** Use one Maturing portal per species when adults need different destinations. Place them in the **same building** if you like — the **Breeder** sends each juvenile to the Maturing portal whose **Receives** matches that species.
+**Mixed species, different outcomes:** Use one Maturing portal per species when adults need different destinations (e.g. boars → Cull, wolves → None). Place them in the **same building** if you like — the **Breeder** sends each juvenile to the Maturing portal whose **Receives** matches that species. You do not hand-sort animals; the portal network routes them.
 
 ---
 
@@ -216,26 +79,20 @@ If Destination is Farm or Cull but no receiver portal exists yet, you'll see a *
 
 ### Starter — 2 portals (juveniles only)
 
+Perfect first build. No adult routing needed.
+
 | Portal | Type | Receives | Destination | Name example |
 |--------|------|----------|-------------|--------------|
 | Breeding area | Breeder | — | — | `Boar Farm` |
 | Grow-up pen | Maturing | Boar | **None** | `Boar Maturing` |
 
----
-
-### Hen farm — dual-purpose eggs
-
-| Portal | Type | Receives | Destination | Name example |
-|--------|------|----------|-------------|--------------|
-| Coop | Breeder | — | — | `Hen Coop` |
-| Recipe egg pen | Egg Collector | **Egg Hen** | — | `Egg Collection` |
-| Hatch pen | Maturing | Hen | **None** | `Chick Maturing` |
-
-Hen eggs try the **Egg Collector** first; overflow or unmatched eggs fall back to **Maturing**. Chicks grow up on the maturing pen.
+Juveniles leave the breeder automatically. Adults stay on the maturing pen until you handle them.
 
 ---
 
 ### Boar production + cull automation
+
+Cull grown boars without walking them across the map.
 
 | Portal | Type | Receives | Destination | Name example |
 |--------|------|----------|-------------|--------------|
@@ -243,9 +100,13 @@ Hen eggs try the **Egg Collector** first; overflow or unmatched eggs fall back t
 | Grow-up pen | Maturing | Boar | **Cull** | `Boar Maturing` |
 | Slaughter area | Cull | — | — | `Boar Cull Yard` |
 
+One **Cull** portal is enough for every species you mark for culling.
+
 ---
 
 ### Cull boars, keep wolves on-site
+
+Mixed species with different adult outcomes. Use **one Maturing portal per species** — each portal sorts its own juveniles and adults. Both maturing portals can sit in the **same grow-up pen**; only the portal **Receives** / **Destination** settings differ.
 
 | Portal | Type | Receives | Destination | Name example |
 |--------|------|----------|-------------|--------------|
@@ -254,9 +115,18 @@ Hen eggs try the **Egg Collector** first; overflow or unmatched eggs fall back t
 | Grow-up pen | Maturing | Wolf | **None** | `Wolf Maturing` |
 | Cull yard | Cull | — | — | `Cull Yard` |
 
+**How routing works:**
+
+- The **Breeder** sends boar juveniles to the Boar maturing portal and wolf juveniles to the Wolf maturing portal automatically.
+- When boars grow up on the Boar maturing portal, they teleport to the **Cull yard**.
+- When wolves grow up on the Wolf maturing portal, they **stay** (Destination: None).
+- You only need **one Cull portal** for every species you mark for culling.
+
 ---
 
 ### Return adults to the farm
+
+Send grown animals back to holding pens near your breeder.
 
 | Portal | Type | Receives | Destination | Name example |
 |--------|------|----------|-------------|--------------|
@@ -264,9 +134,13 @@ Hen eggs try the **Egg Collector** first; overflow or unmatched eggs fall back t
 | Distant grow-up | Maturing | Boar | **Farm** | `Boar Maturing` |
 | Farm holding | Farm | Boar | — | `Boar Holding` |
 
+Place the **Farm** portal where you want adults to land. Match **Receives** to the species on the maturing pen.
+
 ---
 
 ### Multiple maturing pens (round-robin)
+
+Two boar maturing pens? Juveniles alternate between them automatically.
 
 | Portal | Type | Receives |
 |--------|------|----------|
@@ -274,20 +148,20 @@ Hen eggs try the **Egg Collector** first; overflow or unmatched eggs fall back t
 | North pen | Maturing | Boar |
 | South pen | Maturing | Boar |
 
-Same species + same role = round-robin.
+Same species + same role = round-robin. Works for Farm and Cull routing too when you have multiple receivers.
 
 ---
 
 ## Config UI (press E on a portal)
 
-| Field | Breeder | Maturing | Egg Collector | Farm | Cull |
-|-------|---------|----------|---------------|------|------|
-| **Name** | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **Type** | ✓ | ✓ | ✓ | ✓ | ✓ |
-| **Receives** | All juveniles *(fixed)* | ✓ *(discovered species)* | ✓ *(dual-purpose eggs)* | ✓ *(discovered species)* | All adults *(fixed)* |
-| **Destination** | — | None / Farm / Cull | — | — | — |
+| Field | Breeder | Maturing | Farm | Cull |
+|-------|---------|----------|------|------|
+| **Name** | ✓ | ✓ | ✓ | ✓ |
+| **Type** | ✓ | ✓ | ✓ | ✓ |
+| **Receives** | All juveniles *(fixed)* | ✓ | ✓ | All adults *(fixed)* |
+| **Destination** | — | None / Farm / Cull | — | — |
 
-**Receives** lists are populated from species discovered at breeder portals. Until discovery runs, vanilla fallback options may appear.
+**Species in Receives:** Boar · Wolf · Lox · Hen · Asksvin · All
 
 ---
 
@@ -297,28 +171,16 @@ After first launch, edit:
 
 `BepInEx/config/offspringportal.mod.cfg`
 
-### General
-
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `BreederScanRange` | 10 | Scan radius (meters) around breeder portals for juveniles and eggs |
-| `BreederScanIntervalSec` | 0.5 | How often breeders scan |
+| `BreederScanRange` | 10 | Scan radius (meters) around portals |
+| `BreederScanIntervalSec` | 0.5 | How often breeders scan for juveniles |
 | `MaturingAdultScanIntervalSec` | 30 | How often maturing pens scan for adults to forward |
-| `TeleportCooldownSec` | 2 | Per-animal/per-egg cooldown after teleport |
+| `TeleportCooldownSec` | 2 | Per-animal cooldown after teleport |
 | `DistantTeleportTimeoutSec` | 15 | Wait for distant zones to load before giving up |
-| `AllowRetransport` | false | Allow the same animal or egg to teleport again |
+| `AllowRetransport` | false | Allow the same animal to teleport again |
 | `EnableCapWarning` | true | Warn when a maturing pen is inside breeding cap radius |
 | `EnableFollowCommand` | true | Press E on tamed juveniles to toggle follow/stay |
-
-### Breeding
-
-| Setting | Default | Description |
-|---------|---------|-------------|
-| `DiscoveryScanRange` | 0 | Radius for discovering breedable species at breeders (0 = max of breeder scan and mate draw range) |
-| `EnableMateDraw` | true | Nudge ready adults toward mates near breeder portals |
-| `MateDrawRange` | 15 | Max distance between mates before nudging (meters) |
-| `MateDrawIntervalSec` | 1.5 | How often breeders scan for mate draw |
-| `MateDrawStopDistance` | 2.5 | How close mates move before stopping |
 
 Restart Valheim after changing config values.
 
@@ -328,28 +190,34 @@ Restart Valheim after changing config values.
 
 Install on **server/host and every client**. Everyone needs the mod to see the custom portal piece, open the config UI, and get correct hover text. BepInEx and Jotunn are required on all sides.
 
-**Routing:** Destination registry and round-robin selection are server-authoritative. **Detection** runs on whichever peer has the portal and animals in their **active zone** — any player staying near pens can keep automation working while others explore. You do **not** need the host specifically to stand at the pens (same as vanilla breeding).
+Destination registry and round-robin are server-authoritative. Detection runs on whichever peer has portals in their **active zone** — any player near pens can keep automation working while others explore. On dedicated servers, connected players' zones are used for scan eligibility; the server can also move animals by ZDO when they are not loaded locally. Portal config syncs to each client's local registry so connected rune glow and status text stay accurate after remote configuration.
 
-**Server registry sync:** On dedicated servers, the host pushes its full portal list to clients when you join and whenever portals are placed, configured, or destroyed. You do **not** need to visit distant maturing pens first for breeders to show **Connected** or for routing to use the correct destination.
+When **LetsGo** is installed, Offspring Portal yields juvenile follow to LetsGo automatically.
 
-**Client config sync:** Portal configuration updates the local registry immediately on every client, so connected rune glow and the Configure Portal status line stay accurate in multiplayer.
+**Validated:** solo, hosted multiplayer, and dedicated server.
 
-**Dedicated servers:** A connected player near the pens drives detection using their active zone. The headless server validates destinations via RPC, scans all portal ZDOs in the world save, and sends destination position/rotation to clients when executing teleports to unloaded chunks. Destroyed portals are removed from the server registry so juveniles do not route to dismantled sites.
+---
 
-**Offline pens:** With no players in active range, vanilla breeding and portal routing pause (expected).
+## Screenshots & images on Thunderstore
 
-**LetsGo compatibility:** When [LetsGo](https://thunderstore.io/c/valheim/p/Hardwire99/LetsGo/) is installed, Offspring Portal disables its own juvenile follow command so LetsGo owns follow behavior.
+Thunderstore packages include **`icon.png`** (256×256) as the mod's listing icon — that's the main image upload in the zip.
+
+The **README** is Markdown and renders on your mod page, but **inline screenshots must be hosted elsewhere** (GitHub, Imgur, etc.) and linked with a full URL:
+
+```markdown
+![Boar farm setup](https://example.com/your-screenshot.png)
+```
+
+Local images inside the zip won't display on the Thunderstore page. If you want a visual gallery later, host images online and add links here — or share setup screenshots in your Discord / mod discussion thread.
 
 ---
 
 ## Requirements
 
-**Valheim 1.0.x** (tested on 1.0.7). Not compatible with pre-1.0 saves/network versions.
-
 Installed automatically with most mod managers:
 
-- [BepInEx Pack](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/) 5.4.2350+
-- [Jotunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/) 2.30.0+
+- [BepInEx Pack](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/)
+- [Jotunn](https://thunderstore.io/c/valheim/p/ValheimModding/Jotunn/)
 
 ### Manual install
 
@@ -361,20 +229,13 @@ Installed automatically with most mod managers:
 
 ## Tips
 
-- **Name your portals** — hover text shows custom names
-- **Press E on juveniles** to toggle follow/stay when moving them into breeder range
+- **Name your portals** — hover text shows custom names (`Boar Farm`, `Wolf Maturing`, etc.)
+- **Press E on juveniles** to toggle follow/stay when moving them into range of a breeder portal
 - **Destination: None** is the safe default until you're ready for Farm or Cull automation
-- **One Cull portal** can serve your entire world
-- **Egg Collector** is for dual-purpose eggs only — single-purpose layers use Maturing
-- **One Maturing portal = one species rule** for mixed keep/cull setups
-- Keep maturing pens outside vanilla breeding cap radius when possible
-- **Players cannot travel through offspring portals**
-
----
-
-## Source code
-
-Public repository: [github.com/cdjensen99-sudo/Offspring_Portal](https://github.com/cdjensen99-sudo/Offspring_Portal)
+- **One Cull portal** can serve your entire world — boars, wolves, lox, etc.
+- **One Maturing portal = one species rule** — for mixed keep/cull setups, add a Maturing portal per species (they can share one pen)
+- Maturing pens too close to a breeder trigger a **cap radius warning** — keep grow-up pens outside the vanilla breeding cap range when possible
+- **Players cannot travel through offspring portals** — juveniles only. Offspring portals are excluded from XPortal's travel list when XPortal is installed.
 
 ---
 
@@ -382,6 +243,3 @@ Public repository: [github.com/cdjensen99-sudo/Offspring_Portal](https://github.
 
 By **HW**
 
-### Special thanks
-
-- **[KydlDev](https://valheim.hexium.gg/teams/KydlDev)** — troubleshooting assistance and code revision for dedicated-server routing, registry sync, and follow behavior

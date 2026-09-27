@@ -30,7 +30,7 @@ public static class AdultPortalRouter
 
         ZDO zdo = nview?.GetZDO();
 
-        if (zdo == null)
+        if (zdo == null || !PortalConfigGate.IsConfiguredForAutomation(zdo))
 
         {
 

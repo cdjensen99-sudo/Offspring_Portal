@@ -14,7 +14,7 @@ public static class JuvenilePortalRouter
 
         ZNetView nview = portal.GetComponent<ZNetView>();
         ZDO zdo = nview?.GetZDO();
-        if (zdo == null)
+        if (zdo == null || !PortalConfigGate.IsConfiguredForAutomation(zdo))
         {
             return false;
         }

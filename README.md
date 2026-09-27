@@ -1,5 +1,7 @@
 # Offspring Portal
 
+**Version 1.4.0** — Valheim **1.0.x** production release (solo, hosted, and dedicated).
+
 **Automate your breeding pens.** Offspring Portal teleports tamed juveniles from your breeder area to distant maturing pens the moment they wander into range — keeping vanilla population caps from stalling production.
 
 **Press E on juveniles to toggle follow/stay** — useful for leading piglets and wolf cubs through portals or into pens before they grow up.

@@ -14,6 +14,15 @@ public static class PortalScanHelper
             return false;
         }
 
+        ZDO portalZdo = portal.GetComponent<ZNetView>()?.GetZDO();
+        if (portalZdo != null
+            && portalZdo.GetPrefab() == PrefabNames.OffspringPortal.GetStableHashCode()
+            && !PortalConfigGate.IsConfiguredForAutomation(portalZdo))
+        {
+            LogScanSkip(portal, "portal not configured yet");
+            return false;
+        }
+
         Vector3 position = portal.m_proximityRoot != null
             ? portal.m_proximityRoot.position
             : portal.transform.position;

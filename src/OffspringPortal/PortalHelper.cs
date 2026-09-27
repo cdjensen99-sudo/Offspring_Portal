@@ -139,6 +139,11 @@ public static class PortalHelper
             return;
         }
 
+        if (isOffspringPrefab && !PortalConfigGate.IsConfiguredForAutomation(zdo))
+        {
+            return;
+        }
+
         PortalRole role = PortalRoleCatalog.FromZdo(zdo);
         string speciesKey = zdo.GetString(ZdoFields.DeclaredSpecies, string.Empty);
         AdultDestination adultDestination = PortalRoleCatalog.GetAdultDestination(zdo);

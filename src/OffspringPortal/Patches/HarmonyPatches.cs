@@ -86,7 +86,6 @@ public static class GameStartPatch
 {
     private static void Postfix()
     {
-        PortalRpc.Register();
         PortalRegistrySync.Register();
         RoutingRpc.Register();
         JuvenileFollowRpc.Register();

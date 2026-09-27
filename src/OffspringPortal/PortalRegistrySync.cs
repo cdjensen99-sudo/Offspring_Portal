@@ -8,6 +8,7 @@ public static class PortalRegistrySync
 {
     private const string RpcSyncRegistry = "OffspringPortal_SyncRegistry";
     private const string RpcRequestRegistry = "OffspringPortal_RequestRegistry";
+    private const string RpcServerRebuildRegistry = "OffspringPortal_ServerRebuildRegistry";
     private const char PortalSeparator = ';';
     private const char FieldSeparator = '|';
 
@@ -23,8 +24,19 @@ public static class PortalRegistrySync
         ZRoutedRpc instance = ZRoutedRpc.instance;
         instance.Register<string>(RpcSyncRegistry, OnSyncRegistry);
         instance.Register(RpcRequestRegistry, OnRequestRegistry);
+        instance.Register(RpcServerRebuildRegistry, OnServerRebuildRegistry);
         instance.m_onNewPeer += OnNewPeer;
         registered = true;
+    }
+
+    public static void RequestServerRebuildAndBroadcast()
+    {
+        if (ZNet.instance == null || ZNet.instance.IsServer() || ZRoutedRpc.instance == null)
+        {
+            return;
+        }
+
+        ZRoutedRpc.instance.InvokeRoutedRPC(RpcServerRebuildRegistry);
     }
 
     public static void RequestIfClient()
@@ -75,6 +87,19 @@ public static class PortalRegistrySync
         DiagnosticLog.Verbose(
             $"Sending portal registry snapshot to peer {sender}: {CountPayloadEntries(payload)} portal(s).");
         ZRoutedRpc.instance.InvokeRoutedRPC(sender, RpcSyncRegistry, payload);
+    }
+
+    private static void OnServerRebuildRegistry(long sender)
+    {
+        if (ZNet.instance == null || !ZNet.instance.IsServer() || ZRoutedRpc.instance == null)
+        {
+            return;
+        }
+
+        PortalHelper.SyncRegistryFromAllPortalZdos();
+        BreedableSpeciesRegistry.RefreshFromAllBreeders();
+        DestinationRegistry.RefreshCapWarnings();
+        BroadcastFromServer();
     }
 
     private static void OnSyncRegistry(long sender, string payload)
