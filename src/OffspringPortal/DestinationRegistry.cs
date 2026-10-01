@@ -24,6 +24,7 @@ public static class DestinationRegistry
     private static int cullRoundRobinIndex;
     private static readonly Dictionary<string, int> EggCollectorRoundRobinIndex =
         new Dictionary<string, int>(System.StringComparer.OrdinalIgnoreCase);
+    private static float nextCapWarningRefreshTime;
 
     public static void Clear()
     {
@@ -98,7 +99,7 @@ public static class DestinationRegistry
             return;
         }
 
-        ZDO zdo = ZDOMan.instance.GetZDO(record.Id);
+        ZDO zdo = ZdoIdUtility.TryGetZdo(record.Id);
         if (zdo != null)
         {
             record.Position = zdo.GetPosition();
@@ -145,7 +146,7 @@ public static class DestinationRegistry
         destination = null;
         List<PortalRecord> cullPortals = Portals.Values
             .Where(p => p.Role == PortalRole.Cull)
-            .OrderBy(p => p.Id.ToString())
+            .OrderBy(p => ZdoIdUtility.Format(p.Id))
             .ToList();
 
         if (cullPortals.Count == 0)
@@ -210,7 +211,7 @@ public static class DestinationRegistry
 
             foreach (PortalRecord record in GetMatchingEggCollectors(eggCollectorKey))
             {
-                string portalId = record.Id.ToString();
+                string portalId = ZdoIdUtility.Format(record.Id);
                 if (seenPortalIds.Add(portalId))
                 {
                     matches.Add(record);
@@ -218,7 +219,7 @@ public static class DestinationRegistry
             }
         }
 
-        matches.Sort((left, right) => string.Compare(left.Id.ToString(), right.Id.ToString(), System.StringComparison.Ordinal));
+        matches.Sort((left, right) => ZdoIdUtility.Compare(left.Id, right.Id));
         return matches;
     }
 
@@ -233,7 +234,7 @@ public static class DestinationRegistry
             .Where(p => IsLivePortalRecord(p)
                         && p.Role == PortalRole.EggCollector
                         && PortalAcceptsEggCollector(p.DeclaredSpeciesKey, normalizedEggKey, speciesKey))
-            .OrderBy(p => p.Id.ToString())
+            .OrderBy(p => ZdoIdUtility.Format(p.Id))
             .ToList();
     }
 
@@ -336,7 +337,7 @@ public static class DestinationRegistry
             : record.DeclaredSpeciesKey;
         string live = IsLivePortalRecord(record) ? "live" : "missing-zdo";
         return
-            $"  {record.Role} receives={species} id={record.Id} pos=({record.Position.x:F1}, {record.Position.y:F1}, {record.Position.z:F1}) [{live}]";
+            $"  {record.Role} receives={species} id={ZdoIdUtility.Format(record.Id)} pos=({record.Position.x:F1}, {record.Position.y:F1}, {record.Position.z:F1}) [{live}]";
     }
 
     public static void LogMaturingResolutionFailure(string speciesKey, string context)
@@ -353,6 +354,17 @@ public static class DestinationRegistry
             DiagnosticLog.Warning(
                 "No Maturing portals are registered on this game instance. Place/configure a Maturing portal and confirm the server log shows it after configuration.");
         }
+    }
+
+    public static void RefreshCapWarningsThrottled()
+    {
+        if (Time.time < nextCapWarningRefreshTime)
+        {
+            return;
+        }
+
+        nextCapWarningRefreshTime = Time.time + ModConfig.CapWarningRefreshIntervalSec.Value;
+        RefreshCapWarnings();
     }
 
     public static void RefreshCapWarnings()
@@ -376,7 +388,7 @@ public static class DestinationRegistry
                 Vector3.Distance(source.Position, destination.Position)
                 <= BreedingCapData.GetCapRadius(species));
 
-            ZDO zdo = ZDOMan.instance.GetZDO(destination.Id);
+            ZDO zdo = ZdoIdUtility.TryGetZdo(destination.Id);
             if (zdo != null)
             {
                 zdo.Set(ZdoFields.CapWarning, tooClose);
@@ -401,7 +413,7 @@ public static class DestinationRegistry
                         && p.Role == requiredRole
                         && !SpeciesKey.IsAll(p.DeclaredSpeciesKey)
                         && SpeciesKey.PortalAcceptsSpecies(p.DeclaredSpeciesKey, speciesKey))
-            .OrderBy(p => p.Id.ToString())
+            .OrderBy(p => ZdoIdUtility.Format(p.Id))
             .ToList();
 
         if (specific.Count > 0)
@@ -415,7 +427,7 @@ public static class DestinationRegistry
             .Where(p => IsLivePortalRecord(p)
                         && p.Role == requiredRole
                         && SpeciesKey.All.Equals(p.DeclaredSpeciesKey, System.StringComparison.OrdinalIgnoreCase))
-            .OrderBy(p => p.Id.ToString())
+            .OrderBy(p => ZdoIdUtility.Format(p.Id))
             .ToList();
 
         if (catchAll.Count > 0)
@@ -435,9 +447,9 @@ public static class DestinationRegistry
             return false;
         }
 
-        if (ZNet.instance != null && !ZNet.instance.IsServer())
+        if (!ZdoIdUtility.IsValidId(record.Id))
         {
-            return true;
+            return false;
         }
 
         if (ZDOMan.instance == null)
@@ -447,10 +459,10 @@ public static class DestinationRegistry
 
         // A portal ZDO can be absent while its zone is unloaded. Keep the record
         // so distant maturing portals remain routable until actually destroyed.
-        ZDO zdo = ZDOMan.instance.GetZDO(record.Id);
+        ZDO zdo = ZdoIdUtility.TryGetZdo(record.Id);
         if (zdo == null)
         {
-            return true;
+            return ZNet.instance != null && !ZNet.instance.IsServer();
         }
 
         if (!zdo.IsValid())

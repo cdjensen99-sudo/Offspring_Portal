@@ -14,6 +14,20 @@ Directory.Build.props.user
 
 # Decompiled reference mods (local analysis only)
 Decompiled/
+_decompile_valheim/
+_decompile_temp/
+_reflect_temp/
+_review_*/
+_review_offspring_zip/
+
+# Local build / deploy logs
+*build*.txt
+build_out.txt
+_build_log.txt
+_deploy_build.log
+Offspring.zip
+*.docx
+thunderstore/OffspringPortal.dll
 
 # OS / IDE
 Thumbs.db

@@ -13,7 +13,7 @@ public static class PortalPlacement
         Quaternion rotation = Quaternion.identity;
         float exitDistance = ScaledExitDistance;
 
-        ZDO zdo = ZDOMan.instance?.GetZDO(portalId);
+        ZDO zdo = ZdoIdUtility.TryGetZdo(portalId);
         if (zdo != null)
         {
             center = zdo.GetPosition();
@@ -49,7 +49,7 @@ public static class PortalPlacement
 
     public static Quaternion GetExitRotation(ZDOID portalId, OPTeleportWorld fallbackPortal = null)
     {
-        ZDO zdo = ZDOMan.instance?.GetZDO(portalId);
+        ZDO zdo = ZdoIdUtility.TryGetZdo(portalId);
         if (zdo != null)
         {
             return zdo.GetRotation();

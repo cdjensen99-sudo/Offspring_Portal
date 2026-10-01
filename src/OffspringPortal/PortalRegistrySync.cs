@@ -70,6 +70,8 @@ public static class PortalRegistrySync
             return;
         }
 
+        PortalZdoGuard.PurgeSpawnOrphansOnServer($"peer_connect:{peerId}", requestWorldSave: true);
+
         string payload = BuildPayload();
         DiagnosticLog.Verbose(
             $"Sending portal registry snapshot to new peer {peerId}: {CountPayloadEntries(payload)} portal(s).");
@@ -129,7 +131,7 @@ public static class PortalRegistrySync
                 builder.Append(PortalSeparator);
             }
 
-            builder.Append(record.Id);
+            builder.Append(ZdoIdUtility.Format(record.Id));
             builder.Append(FieldSeparator);
             builder.Append(PortalRoleCatalog.ToStorageValue(record.Role));
             builder.Append(FieldSeparator);

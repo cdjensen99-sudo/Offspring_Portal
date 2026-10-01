@@ -103,7 +103,7 @@ public static class PortalHelper
         }
 
         SyncRegistryFromZdo(zdo);
-        DestinationRegistry.RefreshCapWarnings();
+        DestinationRegistry.RefreshCapWarningsThrottled();
     }
 
     public static void SyncRegistryFromAllPortalZdos()

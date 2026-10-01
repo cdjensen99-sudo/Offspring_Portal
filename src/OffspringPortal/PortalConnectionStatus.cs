@@ -158,7 +158,7 @@ public static class PortalConnectionStatus
             return;
         }
 
-        ZDO zdo = ZDOMan.instance.GetZDO(portalId);
+        ZDO zdo = ZdoIdUtility.TryGetZdo(portalId);
         if (zdo != null)
         {
             PortalHelper.SyncRegistryFromZdo(zdo);
@@ -526,7 +526,7 @@ public static class PortalConnectionStatus
 
 
 
-        ZDO zdo = ZDOMan.instance.GetZDO(portalId);
+        ZDO zdo = ZdoIdUtility.TryGetZdo(portalId);
 
         string name = PortalDisplayHelper.GetDisplayName(zdo);
 

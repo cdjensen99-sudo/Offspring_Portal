@@ -65,25 +65,21 @@ public sealed class OPTeleportWorld : MonoBehaviour, Hoverable, Interactable
 
 
     private void Start()
-
     {
-
-        OffspringPortalPrefabs.EnsureIdentity(this);
-
-        PortalHelper.EnsurePortalInitialized(this);
-
-        if (ZNet.instance != null && ZNet.instance.IsServer())
-
+        ZDO zdo = nview?.GetZDO();
+        if (zdo != null && PortalZdoGuard.RejectOrDestroyOrphanIfServer(zdo, "OPTeleportWorld.Start"))
         {
-
-            PortalHelper.SyncRegistryFromPortal(this);
-
+            return;
         }
 
-
+        OffspringPortalPrefabs.EnsureIdentity(this);
+        PortalHelper.EnsurePortalInitialized(this);
+        if (ZNet.instance != null && ZNet.instance.IsServer())
+        {
+            PortalHelper.SyncRegistryFromPortal(this);
+        }
 
         InvokeRepeating(nameof(UpdateConnectionVisual), 0.5f, 0.5f);
-
     }
 
 

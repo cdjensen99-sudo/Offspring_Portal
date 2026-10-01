@@ -2,6 +2,9 @@
 
 **Valheim 1.0.x production release.** See below for prior version history.
 
+## 1.4.4
+- Fixed: Resolved hang when teleporting to or spawning at world spawn on the first login after launching the game.
+
 ## 1.4.0
 - **Valheim 1.0.x release** — feature-complete, production-ready build for solo, hosted, and dedicated servers
 - **Portal configuration gate** — automation and registry sync only apply to portals you have configured once with **E** (avoids treating stray world data as active breeders)

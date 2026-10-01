@@ -1,6 +1,6 @@
 # Offspring Portal
 
-**Version 1.4.0** — Valheim **1.0.x** production release (solo, hosted, and dedicated).
+**Version 1.4.4** — Valheim **1.0.x** production release (solo, hosted, and dedicated).
 
 **Automate your breeding pens.** Offspring Portal teleports tamed juveniles from your breeder area to distant maturing pens the moment they wander into range — keeping vanilla population caps from stalling production.
 
@@ -181,6 +181,15 @@ After first launch, edit:
 | `AllowRetransport` | false | Allow the same animal to teleport again |
 | `EnableCapWarning` | true | Warn when a maturing pen is inside breeding cap radius |
 | `EnableFollowCommand` | true | Press E on tamed juveniles to toggle follow/stay |
+
+**Maintenance** (optional; defaults are safe for normal play):
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `EnableZNetSceneRemoveObjectsPatch` | true | Safer zone unload when modded objects despawn |
+| `EnableStartupPortalAudit` | true | Log orphan portal ZDOs on server startup |
+| `CleanSpawnViewsOnPlayerSpawn` | false | Legacy client cleanup near spawn — leave **false** unless support asks |
+| `EnablePortalConsoleCommands` | true | Registers **`opscan`** and **`opclean`** (admin/host; run **`opclean`** on the server) |
 
 Restart Valheim after changing config values.
 

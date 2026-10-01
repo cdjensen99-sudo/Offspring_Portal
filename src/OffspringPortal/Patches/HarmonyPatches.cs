@@ -8,6 +8,11 @@ namespace OffspringPortal.Patches;
 [HarmonyPatch(typeof(ZNetScene), "RemoveObjects")]
 public static class ZNetSceneRemoveObjectsPatch
 {
+    private static bool Prepare()
+    {
+        return ModConfig.EnableZNetSceneRemoveObjectsPatch.Value;
+    }
+
     private static bool Prefix(
         ZNetScene __instance,
         List<ZDO> currentNearObjects,
@@ -29,10 +34,13 @@ public static class ZNetSceneRemoveObjectsPatch
             Traverse.Create(__instance).Field<Dictionary<ZDO, ZNetView>>("m_instances").Value;
 
         tempRemoved.Clear();
-        foreach (ZNetView view in instances.Values)
+        List<ZDO> staleInstanceKeys = new List<ZDO>();
+        foreach (KeyValuePair<ZDO, ZNetView> entry in instances)
         {
+            ZNetView view = entry.Value;
             if (view == null)
             {
+                staleInstanceKeys.Add(entry.Key);
                 continue;
             }
 
@@ -43,12 +51,25 @@ public static class ZNetSceneRemoveObjectsPatch
             }
         }
 
+        for (int i = 0; i < staleInstanceKeys.Count; i++)
+        {
+            instances.Remove(staleInstanceKeys[i]);
+        }
+
         for (int i = 0; i < tempRemoved.Count; i++)
         {
             ZNetView view = tempRemoved[i];
+            if (view == null)
+            {
+                continue;
+            }
+
             ZDO zdo = view.GetZDO();
             view.ResetZDO();
-            Object.Destroy(view.gameObject);
+            if (view.gameObject != null)
+            {
+                Object.Destroy(view.gameObject);
+            }
 
             if (zdo != null)
             {
@@ -89,6 +110,7 @@ public static class GameStartPatch
         PortalRegistrySync.Register();
         RoutingRpc.Register();
         JuvenileFollowRpc.Register();
+        PortalConsoleCommands.Register();
         OffspringPortalRuntime.Instance.StartCoroutine(DeferredWorldSetup());
     }
 
@@ -113,6 +135,7 @@ public static class GameStartPatch
         PortalHelper.RebuildRegistryFromWorld();
         DiagnosticLog.LogNetworkContext("world setup (pass 2)");
         DiagnosticLog.LogPortalRegistry("world setup (pass 2)");
+        PortalZdoMaintenance.RunStartupAuditIfEnabled();
         if (ZNet.instance != null && !ZNet.instance.IsServer())
         {
             PortalRegistrySync.RequestIfClient();
@@ -125,10 +148,26 @@ public static class PlayerSpawnedPatch
 {
     private static void Postfix()
     {
+        PortalTravelGuard.BeginSpawnGrace();
         OffspringPortalPrefabs.EnsureRegistered();
         OffspringPortalPrefabs.EnsurePieceRegistered();
         PortalHelper.RebuildRegistryFromWorld(includeLegacyMigration: false);
         PortalRegistrySync.RequestIfClient();
+        if (ZNet.instance != null && ZNet.instance.IsServer())
+        {
+            PortalZdoGuard.PurgeSpawnOrphansOnServer("player_spawn", requestWorldSave: true);
+        }
+
+        if (ModConfig.CleanSpawnViewsOnPlayerSpawn.Value)
+        {
+            int cleaned = PortalZdoMaintenance.CleanLoadedViewsNearSpawn(
+                ModConfig.SpawnCleanupRadiusMeters.Value,
+                dryRun: false);
+            if (cleaned > 0)
+            {
+                OPLog.Info($"[OP] Removed {cleaned} unconfigured offspring portal view(s) near spawn after player spawn.");
+            }
+        }
     }
 }
 
@@ -151,6 +190,12 @@ public static class WearNTearOnPlacedPatch
         OPTeleportWorld portal = __instance.GetComponent<OPTeleportWorld>();
         if (portal != null)
         {
+            ZDO zdo = portal.GetComponent<ZNetView>()?.GetZDO();
+            if (zdo != null && PortalZdoGuard.RejectOrDestroyOrphanIfServer(zdo, "WearNTear.OnPlaced"))
+            {
+                return;
+            }
+
             PortalHelper.EnsurePortalInitialized(portal);
         }
 
@@ -185,16 +230,20 @@ public static class CharacterTeleportToPlayerTravelPatch
 [HarmonyPatch(typeof(WearNTear), "Destroy")]
 public static class WearNTearDestroyPatch
 {
+    private static ZDOID pendingDestroyedPortalId;
+
     private static void Prefix(WearNTear __instance)
     {
         OPTeleportWorld portal = __instance.GetComponent<OPTeleportWorld>();
         if (portal == null || !OffspringPortalPrefabs.IsOffspringPortal(portal))
         {
+            pendingDestroyedPortalId = ZDOID.None;
             return;
         }
 
         ZNetView nview = portal.GetComponent<ZNetView>();
         ZDO zdo = nview?.GetZDO();
+        pendingDestroyedPortalId = zdo?.m_uid ?? ZDOID.None;
         if (zdo != null)
         {
             DestinationRegistry.Remove(zdo.m_uid);
@@ -209,6 +258,13 @@ public static class WearNTearDestroyPatch
             return;
         }
 
+        if (ZNet.instance != null && ZNet.instance.IsServer() && ZdoIdUtility.IsValidId(pendingDestroyedPortalId))
+        {
+            PortalZdoMaintenance.DestroyPortalZdo(pendingDestroyedPortalId);
+            PortalHelper.RebuildRegistryFromWorld(includeLegacyMigration: false);
+        }
+
+        pendingDestroyedPortalId = ZDOID.None;
         PortalRegistrySync.BroadcastFromServer();
     }
 }

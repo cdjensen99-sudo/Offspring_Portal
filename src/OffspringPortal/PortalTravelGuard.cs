@@ -9,6 +9,12 @@ public static class PortalTravelGuard
         "Offspring portals route juveniles only. Use a standard portal to travel.";
 
     private const float PlayerTeleportBlockRadius = 4f;
+    private static float spawnGraceUntil;
+
+    public static void BeginSpawnGrace()
+    {
+        spawnGraceUntil = Time.time + ModConfig.PlayerSpawnTravelGuardGraceSec.Value;
+    }
 
     public static bool IsOffspringPortalZdo(ZDO zdo)
     {
@@ -28,7 +34,17 @@ public static class PortalTravelGuard
     public static bool BlocksPlayerTeleportTo(Vector3 position, Player player, out string message)
     {
         message = null;
-        if (player == null || !IsNearOffspringPortal(position))
+        if (player == null)
+        {
+            return false;
+        }
+
+        if (Time.time < spawnGraceUntil)
+        {
+            return false;
+        }
+
+        if (!IsNearConfiguredOffspringPortal(position))
         {
             return false;
         }
@@ -37,7 +53,7 @@ public static class PortalTravelGuard
         return true;
     }
 
-    public static bool IsNearOffspringPortal(Vector3 position)
+    public static bool IsNearConfiguredOffspringPortal(Vector3 position)
     {
         float radiusSq = PlayerTeleportBlockRadius * PlayerTeleportBlockRadius;
 
@@ -45,6 +61,12 @@ public static class PortalTravelGuard
         foreach (OPTeleportWorld portal in loadedPortals)
         {
             if (!OffspringPortalPrefabs.IsOffspringPortal(portal))
+            {
+                continue;
+            }
+
+            ZDO zdo = portal.GetComponent<ZNetView>()?.GetZDO();
+            if (!PortalConfigGate.IsConfiguredForAutomation(zdo))
             {
                 continue;
             }
@@ -68,6 +90,11 @@ public static class PortalTravelGuard
 
         foreach (ZDO zdo in portalZdos)
         {
+            if (!PortalConfigGate.IsConfiguredForAutomation(zdo))
+            {
+                continue;
+            }
+
             if (IsNearZdoPortalPosition(position, zdo, radiusSq))
             {
                 return true;
